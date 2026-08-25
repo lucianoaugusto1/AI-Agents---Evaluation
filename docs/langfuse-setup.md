@@ -12,7 +12,9 @@ evals/run_eval.py
         |
         +--> src/acme_support_ai/orchestrator.py
         |       |
-        |       +--> agente especializado
+        |       +--> runtime scripted ou Agno + Groq
+        |               |
+        |               +--> tools locais
         |
         +--> evals/judge.py
         |       |
@@ -31,6 +33,8 @@ O arquivo principal da integracao e `evals/observability.py`. A classe `Langfuse
 - `faithfulness`
 - `format`
 - `safety`
+
+Quando `ACME_AGENT_RUNTIME=agno`, a resposta avaliada vem de agentes reais executados em `src/acme_support_ai/agno_runtime.py`. As tools usadas por esses agentes ficam em `src/acme_support_ai/tools.py`.
 
 ## 1. Criar ou escolher um projeto no Langfuse
 
@@ -73,6 +77,13 @@ Se estiver usando Langfuse self-hosted, troque `LANGFUSE_BASE_URL` pela URL da s
 uv run python -m evals.run_eval --verbose --trace-provider langfuse
 ```
 
+Com agentes reais via Groq:
+
+```bash
+uv sync --extra full
+ACME_AGENT_RUNTIME=agno uv run python -m evals.run_eval --verbose --trace-provider langfuse
+```
+
 Ao final, o runner chama `flush()` para enviar os eventos pendentes.
 
 ## 5. O que olhar no Langfuse
@@ -95,6 +106,7 @@ Use Langfuse para mostrar que Evaluation nao e apenas uma nota final. Ela ajuda 
 - se o agente esta usando regra antiga;
 - se o output viola formato;
 - se a resposta e util, mas nao fiel ao contexto.
+- se uma resposta real do runtime Agno + Groq melhora ou piora o baseline scripted.
 
 ## Fallback sem conta externa
 

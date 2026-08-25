@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import os
 import re
 
 from .agents import finance_agent, general_agent, hr_agent, it_agent
+from .config import load_env_file
 from .knowledge_base import retrieve
 
 
@@ -23,6 +25,12 @@ def route(question: str) -> str:
 
 
 def answer_question(question: str) -> str:
+    load_env_file()
+    if os.getenv("ACME_AGENT_RUNTIME", "scripted").lower() == "agno":
+        from .agno_runtime import answer_with_agno
+
+        return answer_with_agno(question)
+
     docs = retrieve(question)
     selected = route(question)
 

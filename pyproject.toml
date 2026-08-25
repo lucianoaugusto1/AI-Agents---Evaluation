@@ -9,7 +9,16 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+agents = [
+  "agno>=2.3.0",
+  "groq>=0.35.0",
+]
 observability = [
+  "langfuse>=3.3.1",
+]
+full = [
+  "agno>=2.3.0",
+  "groq>=0.35.0",
   "langfuse>=3.3.1",
 ]
 

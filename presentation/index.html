@@ -497,10 +497,23 @@
           <div class="panel blue"><strong>FastAPI</strong><span>API simulando produto real.</span></div>
           <div class="panel"><strong>uv</strong><span>Ambiente e execução padronizados.</span></div>
           <div class="panel"><strong>Golden Dataset</strong><span>Casos esperados e bordas.</span></div>
-          <div class="panel"><strong>Observability</strong><span>Langfuse como padrão, local como fallback.</span></div>
+          <div class="panel"><strong>Agno + Groq</strong><span>Agentes reais com tools locais.</span></div>
         </div>
       </div>
       <span class="footer">14</span>
+    </section>
+
+    <section class="slide">
+      <p class="kicker">Runtime real</p>
+      <h2>Agno + Groq deixa o exercício mais perto de um produto real.</h2>
+      <div class="rule"></div>
+      <div class="grid2">
+        <div class="panel blue"><strong>Agents</strong><span>Financeiro, RH e TI com instruções próprias.</span></div>
+        <div class="panel"><strong>Tools</strong><span>Busca de política, versões, aprovação, perfil e ticket.</span></div>
+        <div class="panel"><strong>Groq</strong><span>Modelo real executando o raciocínio.</span></div>
+        <div class="panel"><strong>Langfuse</strong><span>Traces e scores por caso avaliado.</span></div>
+      </div>
+      <span class="footer">15</span>
     </section>
 
     <section class="slide">
@@ -509,11 +522,11 @@
       <div class="rule"></div>
       <div class="flow">
         <div class="panel"><strong>API</strong><span>Recebe pergunta.</span></div>
-        <div class="panel"><strong>Router</strong><span>Escolhe agente.</span></div>
-        <div class="panel blue"><strong>Agent</strong><span>Responde com política.</span></div>
+        <div class="panel"><strong>Runtime</strong><span>Scripted ou Agno.</span></div>
+        <div class="panel blue"><strong>Tools</strong><span>Buscam dados e regras.</span></div>
         <div class="panel"><strong>Eval</strong><span>Mede qualidade e risco.</span></div>
       </div>
-      <span class="footer">15</span>
+      <span class="footer">16</span>
     </section>
 
     <section class="slide">
@@ -526,7 +539,7 @@
         <div class="panel"><strong>Formato quebrado</strong><span>Um agente sai do contrato JSON.</span></div>
         <div class="panel"><strong>Safety</strong><span>Prompt injection extrai uma instrução indevida.</span></div>
       </div>
-      <span class="footer">16</span>
+      <span class="footer">17</span>
     </section>
 
     <section class="slide">
@@ -539,7 +552,7 @@
         <div class="panel"><strong>3. Subir API</strong><span>uv run uvicorn src.acme_support_ai.api:app --reload</span></div>
       </div>
       <p class="punch" style="margin-top: 4rem;">Meta: sair de ~0.61 para 0.85+ sem editar o dataset.</p>
-      <span class="footer">17</span>
+      <span class="footer">18</span>
     </section>
 
     <section class="slide">
@@ -553,7 +566,7 @@
         <article><div class="step-num">4</div><strong>Score final</strong></article>
         <article><div class="step-num">5</div><strong>Risco restante</strong></article>
       </div>
-      <span class="footer">18</span>
+      <span class="footer">19</span>
     </section>
 
     <section class="slide">
@@ -562,13 +575,13 @@
         <p class="punch blue-text">Ela mostra onde ele falha antes do cliente descobrir.</p>
         <p>Projeto: <strong>/Users/lucianobr01/acme-agents-eval-challenge</strong></p>
       </div>
-      <span class="footer">19</span>
+      <span class="footer">20</span>
     </section>
   </main>
 
   <nav class="controls" aria-label="Controles da apresentação">
     <button id="prev" aria-label="Slide anterior">‹</button>
-    <span class="counter" id="counter">1 / 19</span>
+    <span class="counter" id="counter">1 / 20</span>
     <button id="next" aria-label="Próximo slide">›</button>
   </nav>
 

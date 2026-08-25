@@ -6,10 +6,16 @@ Pergunta do usuario
         v
 orchestrator.route()
         |
-        +--> finance_agent()
-        +--> hr_agent()
-        +--> it_agent()
-        +--> general_agent()
+        +--> runtime scripted
+        |       +--> finance_agent()
+        |       +--> hr_agent()
+        |       +--> it_agent()
+        |       +--> general_agent()
+        |
+        +--> runtime agno
+                +--> Agno team
+                +--> Groq model
+                +--> local tools
         |
         v
 knowledge_base.retrieve()

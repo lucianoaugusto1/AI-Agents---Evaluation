@@ -38,6 +38,26 @@ uv run uvicorn src.acme_support_ai.api:app --reload
 uv run python -m src.acme_support_ai.cli "Qual é o prazo para pedir reembolso de viagem?"
 ```
 
+## Runtime real com agentes
+
+O baseline usa `ACME_AGENT_RUNTIME=scripted`. Para usar agentes reais com Agno + Groq:
+
+```bash
+uv sync --extra agents
+ACME_AGENT_RUNTIME=agno uv run python -m src.acme_support_ai.cli "Qual é o prazo para pedir reembolso de viagem?"
+```
+
+Com Langfuse:
+
+```bash
+uv sync --extra full
+ACME_AGENT_RUNTIME=agno uv run python -m evals.run_eval --verbose --trace-provider langfuse
+```
+
+O runtime real envia perguntas e contexto ficticio do projeto para Groq.
+
+Leia `docs/agno-groq-runtime.md` para ver arquitetura, tools e setup.
+
 ## Observabilidade
 
 Modo local:

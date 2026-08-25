@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from .judge import CaseResult
+from src.acme_support_ai.config import load_env_file
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -73,6 +74,7 @@ class LocalJsonlObserver:
 
 class LangfuseObserver:
     def __init__(self) -> None:
+        load_env_file()
         from langfuse import get_client
 
         self.client = get_client()

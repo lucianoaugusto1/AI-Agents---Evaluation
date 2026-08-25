@@ -22,11 +22,12 @@ O problema: a demo parece boa, mas a evaluation revela riscos classicos de siste
 1. Peça para todos rodarem `uv sync`.
 2. Peça para todos rodarem `uv run python -m evals.run_eval --verbose`.
 3. Se quiser demonstrar produto real, suba a API com `uv run uvicorn src.acme_support_ai.api:app --reload`.
-4. Se houver Langfuse configurado, rode a suite com `--trace-provider langfuse`.
-5. Dê 5 minutos para leitura dos failures.
-6. Peça para escolherem uma classe de bug por vez.
-7. Incentive alteracoes pequenas e novas execucoes da suite.
-8. No final, cada grupo apresenta score antes/depois e diagnostico.
+4. Se quiser usar agentes reais, configure Groq e rode com `ACME_AGENT_RUNTIME=agno`.
+5. Se houver Langfuse configurado, rode a suite com `--trace-provider langfuse`.
+6. Dê 5 minutos para leitura dos failures.
+7. Peça para escolherem uma classe de bug por vez.
+8. Incentive alteracoes pequenas e novas execucoes da suite.
+9. No final, cada grupo apresenta score antes/depois e diagnostico.
 
 ## Observabilidade no workshop
 
@@ -51,6 +52,34 @@ Referencias:
 
 - Langfuse SDK: https://langfuse.com/docs/observability/sdk/overview
 - Langfuse observation types: https://langfuse.com/docs/observability/features/observation-types
+
+## Agentes reais com Agno + Groq
+
+O projeto suporta dois modos:
+
+- `scripted`: deterministico, rapido e ideal para explicar o baseline.
+- `agno`: agentes reais com Groq e tools locais.
+
+Para demonstrar:
+
+```bash
+uv sync --extra full
+ACME_AGENT_RUNTIME=agno uv run python -m evals.run_eval --verbose --trace-provider langfuse
+```
+
+Use esse modo para mostrar:
+
+- chamada real ao modelo;
+- escolha de agente;
+- uso de tools;
+- impacto de prompt/instrucao;
+- traces e scores no Langfuse.
+
+Referencias:
+
+- Groq + Agno: https://console.groq.com/docs/agno
+- Groq tool use: https://console.groq.com/docs/tool-use
+- Agno docs: https://docs.agno.com/
 
 ## Caminho de correcao esperado
 

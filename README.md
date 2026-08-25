@@ -15,11 +15,14 @@ O assistente responde perguntas internas de colaboradores sobre:
 - acesso, VPN, MFA e seguranca;
 - perguntas gerais quando nao ha agente especializado.
 
-Por tras da API existe um sistema simples de agentes:
+Por tras da API existe um sistema de agentes com dois runtimes:
 
 ```text
-FastAPI -> orchestrator -> retriever -> specialist agent -> JSON response
+FastAPI -> orchestrator -> runtime -> tools -> JSON response
 ```
+
+- `scripted`: baseline deterministico com bugs intencionais, ideal para comparar scores durante o workshop.
+- `agno`: runtime real com Agno + Groq, agentes especializados e tools locais.
 
 Esse desenho simula um produto real o suficiente para discutir:
 
@@ -126,12 +129,63 @@ Para testar uma pergunta manual:
 uv run python -m src.acme_support_ai.cli "Qual e o prazo para pedir reembolso de viagem?"
 ```
 
+## Runtime real com Agno + Groq
+
+O projeto vem com um modo real de agentes usando Agno e Groq. Ele e opcional porque envia a pergunta e o contexto ficticio retornado pelas tools para a API da Groq.
+
+Instale as dependencias:
+
+```bash
+uv sync --extra agents
+```
+
+Configure:
+
+```bash
+cp .env.example .env
+# preencha GROQ_API_KEY
+ACME_AGENT_RUNTIME=agno
+GROQ_MODEL=openai/gpt-oss-120b
+```
+
+Rode uma pergunta:
+
+```bash
+ACME_AGENT_RUNTIME=agno uv run python -m src.acme_support_ai.cli "Qual é o prazo para pedir reembolso de viagem?"
+```
+
+Rode a evaluation usando agentes reais:
+
+```bash
+ACME_AGENT_RUNTIME=agno uv run python -m evals.run_eval --verbose --trace-provider langfuse
+```
+
+### Tools disponiveis para os agentes
+
+- `search_policy_documents`: busca documentos de politica.
+- `list_policy_versions`: lista versoes atuais e obsoletas.
+- `get_employee_profile`: retorna perfil ficticio para decisoes de privacidade.
+- `check_approval_matrix`: consulta regras de aprovacao.
+- `create_support_ticket`: cria ticket simulado.
+
+### Onde fica o codigo
+
+- Runtime Agno/Groq: `src/acme_support_ai/agno_runtime.py`
+- Tools dos agentes: `src/acme_support_ai/tools.py`
+- Selecao de runtime: `src/acme_support_ai/orchestrator.py`
+
+Guia detalhado:
+
+```text
+docs/agno-groq-runtime.md
+```
+
 ## Observabilidade
 
 O padrao de observabilidade do projeto e Langfuse. Ele entra depois que cada caso do golden dataset e executado:
 
 ```text
-golden_dataset -> agente -> judge -> scores -> Langfuse trace
+golden_dataset -> agente/scripted ou Agno+Groq -> judge -> scores -> Langfuse trace
 ```
 
 Para configurar, siga o guia:
@@ -234,4 +288,7 @@ Nao comece alterando tudo. Rode a evaluation, olhe os piores casos e corrija uma
 - Langfuse observation types: https://langfuse.com/docs/observability/features/observation-types
 - Langfuse integrations: https://langfuse.com/integrations
 - Langfuse Python reference: https://python.reference.langfuse.com/langfuse
+- Groq + Agno: https://console.groq.com/docs/agno
+- Groq tool use: https://console.groq.com/docs/tool-use
+- Agno docs: https://docs.agno.com/
 - uv: https://docs.astral.sh/uv/
