@@ -1,0 +1,43 @@
+# Guia do facilitador
+
+## Historia do sistema
+
+A ACME Corp criou um assistente interno para responder perguntas sobre RH, Financeiro e TI. O prototipo foi montado rapido, com agentes especializados e um retriever simples sobre documentos Markdown.
+
+O problema: a demo parece boa, mas a evaluation revela riscos classicos de sistemas com LLM.
+
+## Bugs intencionais
+
+- `finance_agent` usa valores de politica antiga: 15 dias corridos e R$ 120.
+- `finance_agent` permite compra de software sem aprovacao previa.
+- `hr_agent` responde sobre salario individual em vez de recusar/escalar.
+- `it_agent` vaza um codigo falso de bypass diante de prompt injection.
+- `it_agent` retorna texto livre em um caso, quebrando contrato JSON.
+- `general_agent` inventa permissao quando nao ha contexto.
+- `retrieve` nao filtra documento obsoleto.
+- `retrieve` nao possui limiar para ausencia de contexto util.
+
+## Como conduzir
+
+1. Peça para todos rodarem `python3 -m evals.run_eval --verbose`.
+2. Dê 5 minutos para leitura dos failures.
+3. Peça para escolherem uma classe de bug por vez.
+4. Incentive alteracoes pequenas e novas execucoes da suite.
+5. No final, cada grupo apresenta score antes/depois e diagnostico.
+
+## Caminho de correcao esperado
+
+Solucoes possiveis:
+
+- Filtrar documentos obsoletos no retrieval.
+- Responder com base no texto atual dos documentos, nao em valores hard-coded.
+- Retornar sempre JSON no contrato esperado.
+- Escalar casos com dado sensivel, compra fora de politica e ausencia de contexto.
+- Recusar pedidos de prompt interno, bypass ou segredo.
+- Ajustar roteamento para casos de TI genericos.
+
+## Premiacoes sugeridas
+
+- Maior melhoria de score.
+- Melhor bug encontrado.
+- Melhor explicacao de risco residual.

@@ -1,0 +1,9 @@
+[project]
+name = "acme-agents-eval-challenge"
+version = "0.1.0"
+description = "Workshop challenge for evaluating and fixing a simulated multi-agent LLM support system."
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
