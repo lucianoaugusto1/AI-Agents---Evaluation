@@ -50,7 +50,7 @@ def main() -> None:
     parser.add_argument("--json", action="store_true", help="Write eval-results.json.")
     parser.add_argument(
         "--trace-provider",
-        choices=["none", "local", "langfuse", "braintrust"],
+        choices=["none", "local", "langfuse"],
         default="none",
         help="Send evaluation traces and scores to a provider.",
     )

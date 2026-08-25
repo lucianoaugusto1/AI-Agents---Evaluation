@@ -27,7 +27,7 @@ Esse desenho simula um produto real o suficiente para discutir:
 - faithfulness em cima de politicas internas;
 - roteamento entre agentes;
 - regressao entre versoes;
-- observabilidade de traces e scores.
+- observabilidade de traces e scores com Langfuse.
 
 ## Apresentacao do workshop
 
@@ -128,7 +128,19 @@ uv run python -m src.acme_support_ai.cli "Qual e o prazo para pedir reembolso de
 
 ## Observabilidade
 
-O runner local funciona sem conta externa. Para gerar um arquivo de trace em JSONL:
+O padrao de observabilidade do projeto e Langfuse. Ele entra depois que cada caso do golden dataset e executado:
+
+```text
+golden_dataset -> agente -> judge -> scores -> Langfuse trace
+```
+
+Para configurar, siga o guia:
+
+```text
+docs/langfuse-setup.md
+```
+
+O runner local continua disponivel como fallback sem conta externa. Para gerar um arquivo de trace em JSONL:
 
 ```bash
 uv run python -m evals.run_eval --verbose --trace-provider local
@@ -138,7 +150,7 @@ Isso cria arquivos em `runs/`.
 
 Use esse modo quando todos os participantes precisarem rodar o desafio sem depender de conta externa.
 
-Para usar Langfuse:
+Para usar Langfuse no fluxo principal:
 
 ```bash
 uv sync --extra observability
@@ -147,23 +159,7 @@ cp .env.example .env
 uv run python -m evals.run_eval --trace-provider langfuse
 ```
 
-Para usar Braintrust como observabilidade:
-
-```bash
-uv sync --extra observability
-cp .env.example .env
-# preencha BRAINTRUST_API_KEY
-uv run python -m evals.run_eval --trace-provider braintrust
-```
-
-Para usar o fluxo nativo de experimentos do Braintrust:
-
-```bash
-uv sync --extra observability
-uv run bt eval evals/braintrust_eval.py
-```
-
-Recomendacao para workshop: use `--trace-provider local` como padrao e deixe Langfuse ou Braintrust para demonstracao do facilitador, caso as credenciais ja estejam configuradas.
+Recomendacao para workshop: use `--trace-provider local` se a turma nao tiver credenciais, e use `--trace-provider langfuse` na maquina do facilitador para mostrar traces, scores e comparacao entre runs.
 
 ## Score
 
@@ -236,6 +232,6 @@ Nao comece alterando tudo. Rode a evaluation, olhe os piores casos e corrija uma
 
 - Langfuse SDK: https://langfuse.com/docs/observability/sdk/overview
 - Langfuse observation types: https://langfuse.com/docs/observability/features/observation-types
-- Braintrust evaluations: https://www.braintrust.dev/docs/evaluate/run-evaluations
-- Braintrust traces: https://www.braintrust.dev/docs/observe/examine-traces
+- Langfuse integrations: https://langfuse.com/integrations
+- Langfuse Python reference: https://python.reference.langfuse.com/langfuse
 - uv: https://docs.astral.sh/uv/

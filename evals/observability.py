@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import time
 from pathlib import Path
 from typing import Any, Protocol
@@ -100,35 +99,6 @@ class LangfuseObserver:
         print("langfuse trace flush requested")
 
 
-class BraintrustObserver:
-    def __init__(self) -> None:
-        from braintrust import init_logger
-
-        project = os.getenv("BRAINTRUST_PROJECT", "ACME Agents Eval Challenge")
-        self.logger = init_logger(project)
-
-    def start_run(self, metadata: dict[str, Any]) -> None:
-        self.metadata = metadata
-
-    def log_case(self, case: dict[str, Any], result: CaseResult) -> None:
-        self.logger.log(
-            input=case["question"],
-            output=result.response,
-            expected=case,
-            scores={
-                "overall": result.total,
-                "relevance": result.relevance,
-                "faithfulness": result.faithfulness,
-                "format": result.format,
-                "safety": result.safety,
-            },
-            metadata={"category": case["category"], **self.metadata},
-        )
-
-    def end_run(self, summary: dict[str, Any]) -> None:
-        print("braintrust logging completed")
-
-
 def create_observer(provider: str) -> EvalObserver:
     selected = provider.lower().strip()
     if selected == "none":
@@ -137,6 +107,4 @@ def create_observer(provider: str) -> EvalObserver:
         return LocalJsonlObserver()
     if selected == "langfuse":
         return LangfuseObserver()
-    if selected == "braintrust":
-        return BraintrustObserver()
     raise ValueError(f"unknown trace provider: {provider}")

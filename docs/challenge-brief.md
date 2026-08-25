@@ -46,13 +46,14 @@ Modo local:
 uv run python -m evals.run_eval --trace-provider local
 ```
 
-Modo Langfuse ou Braintrust, se o facilitador fornecer chaves:
+Modo Langfuse, se o facilitador fornecer chaves:
 
 ```bash
 uv sync --extra observability
 uv run python -m evals.run_eval --trace-provider langfuse
-uv run python -m evals.run_eval --trace-provider braintrust
 ```
+
+Leia `docs/langfuse-setup.md` para configurar as credenciais e entender onde o trace aparece.
 
 ## Entrega
 

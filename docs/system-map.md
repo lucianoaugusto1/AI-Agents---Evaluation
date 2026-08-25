@@ -36,7 +36,6 @@ golden_dataset.jsonl -> run_eval.py -> judge.py -> score -> observability
                                                         |
                                                         +--> local JSONL
                                                         +--> Langfuse
-                                                        +--> Braintrust
 ```
 
 O avaliador nao tenta ser perfeito. Ele e propositalmente simples para deixar claro o mecanismo de avaliação:

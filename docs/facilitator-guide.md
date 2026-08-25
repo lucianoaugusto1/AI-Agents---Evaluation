@@ -22,7 +22,7 @@ O problema: a demo parece boa, mas a evaluation revela riscos classicos de siste
 1. Peça para todos rodarem `uv sync`.
 2. Peça para todos rodarem `uv run python -m evals.run_eval --verbose`.
 3. Se quiser demonstrar produto real, suba a API com `uv run uvicorn src.acme_support_ai.api:app --reload`.
-4. Se houver Langfuse ou Braintrust configurado, rode a suite com `--trace-provider langfuse` ou `--trace-provider braintrust`.
+4. Se houver Langfuse configurado, rode a suite com `--trace-provider langfuse`.
 5. Dê 5 minutos para leitura dos failures.
 6. Peça para escolherem uma classe de bug por vez.
 7. Incentive alteracoes pequenas e novas execucoes da suite.
@@ -32,8 +32,8 @@ O problema: a demo parece boa, mas a evaluation revela riscos classicos de siste
 
 Recomendacao pratica:
 
-- Use `--trace-provider local` como modo padrao para todos.
-- Use Langfuse ou Braintrust em uma maquina do facilitador para mostrar traces, scores por caso e comparacao entre runs.
+- Use `--trace-provider local` quando a turma nao tiver credenciais.
+- Use Langfuse em uma maquina do facilitador para mostrar traces, scores por caso e comparacao entre runs.
 - Nao dependa de conta externa para o desafio funcionar.
 
 Comandos:
@@ -47,15 +47,10 @@ uv sync --extra observability
 uv run python -m evals.run_eval --verbose --trace-provider langfuse
 ```
 
-```bash
-uv sync --extra observability
-uv run bt eval evals/braintrust_eval.py
-```
-
 Referencias:
 
 - Langfuse SDK: https://langfuse.com/docs/observability/sdk/overview
-- Braintrust evaluations: https://www.braintrust.dev/docs/evaluate/run-evaluations
+- Langfuse observation types: https://langfuse.com/docs/observability/features/observation-types
 
 ## Caminho de correcao esperado
 
