@@ -23,28 +23,89 @@ Arquivos que representam a suite de evaluation e nao devem ser editados:
 - `evals/judge.py`
 - `evals/run_eval.py`
 
-## Como rodar
+## Setup com uv
 
 ```bash
-python3 -m evals.run_eval
+uv sync
+```
+
+## Como rodar a API
+
+```bash
+uv run uvicorn src.acme_support_ai.api:app --reload
+```
+
+Depois acesse:
+
+- `GET http://127.0.0.1:8000/health`
+- `POST http://127.0.0.1:8000/ask`
+- `POST http://127.0.0.1:8000/eval/run`
+
+Exemplo:
+
+```bash
+curl -X POST http://127.0.0.1:8000/ask \
+  -H "content-type: application/json" \
+  -d '{"question":"Qual é o prazo para pedir reembolso de viagem?"}'
+```
+
+## Como rodar a Evaluation
+
+```bash
+uv run python -m evals.run_eval
 ```
 
 Para ver detalhes caso a caso:
 
 ```bash
-python3 -m evals.run_eval --verbose
+uv run python -m evals.run_eval --verbose
 ```
 
 Para rodar os testes da estrutura do projeto:
 
 ```bash
-python3 -m unittest discover
+uv run python -m unittest discover
 ```
 
 Para testar uma pergunta manual:
 
 ```bash
-python3 -m src.acme_support_ai.cli "Qual e o prazo para pedir reembolso de viagem?"
+uv run python -m src.acme_support_ai.cli "Qual e o prazo para pedir reembolso de viagem?"
+```
+
+## Observabilidade
+
+O runner local funciona sem conta externa. Para gerar um arquivo de trace em JSONL:
+
+```bash
+uv run python -m evals.run_eval --verbose --trace-provider local
+```
+
+Isso cria arquivos em `runs/`.
+
+Para usar Langfuse:
+
+```bash
+uv sync --extra observability
+cp .env.example .env
+# preencha LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY e LANGFUSE_BASE_URL
+uv run python -m evals.run_eval --trace-provider langfuse
+```
+
+Para usar Braintrust como observabilidade:
+
+```bash
+uv sync --extra observability
+cp .env.example .env
+# preencha BRAINTRUST_API_KEY
+uv run python -m evals.run_eval --trace-provider braintrust
+```
+
+Para usar o fluxo nativo de experimentos do Braintrust:
+
+```bash
+uv sync --extra observability
+uv run bt eval evals/braintrust_eval.py
 ```
 
 ## Score
@@ -81,3 +142,11 @@ Cada grupo deve enviar:
 ## Dica
 
 Nao comece alterando tudo. Rode a evaluation, olhe os piores casos e corrija uma classe de erro por vez.
+
+## Fontes das integracoes
+
+- Langfuse SDK: https://langfuse.com/docs/observability/sdk/overview
+- Langfuse observation types: https://langfuse.com/docs/observability/features/observation-types
+- Braintrust evaluations: https://www.braintrust.dev/docs/evaluate/run-evaluations
+- Braintrust traces: https://www.braintrust.dev/docs/observe/examine-traces
+- uv: https://docs.astral.sh/uv/

@@ -23,11 +23,35 @@ O sistema usa um orquestrador simples com agentes de RH, Financeiro, TI e Geral.
 ## Comandos
 
 ```bash
-python3 -m evals.run_eval --verbose
+uv sync
 ```
 
 ```bash
-python3 -m src.acme_support_ai.cli "Qual é o prazo para pedir reembolso de viagem?"
+uv run python -m evals.run_eval --verbose
+```
+
+```bash
+uv run uvicorn src.acme_support_ai.api:app --reload
+```
+
+```bash
+uv run python -m src.acme_support_ai.cli "Qual é o prazo para pedir reembolso de viagem?"
+```
+
+## Observabilidade
+
+Modo local:
+
+```bash
+uv run python -m evals.run_eval --trace-provider local
+```
+
+Modo Langfuse ou Braintrust, se o facilitador fornecer chaves:
+
+```bash
+uv sync --extra observability
+uv run python -m evals.run_eval --trace-provider langfuse
+uv run python -m evals.run_eval --trace-provider braintrust
 ```
 
 ## Entrega

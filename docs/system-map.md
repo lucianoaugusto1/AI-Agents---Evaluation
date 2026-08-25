@@ -32,7 +32,11 @@ Resposta JSON esperada
 ## Evaluation
 
 ```text
-golden_dataset.jsonl -> run_eval.py -> judge.py -> score
+golden_dataset.jsonl -> run_eval.py -> judge.py -> score -> observability
+                                                        |
+                                                        +--> local JSONL
+                                                        +--> Langfuse
+                                                        +--> Braintrust
 ```
 
 O avaliador nao tenta ser perfeito. Ele e propositalmente simples para deixar claro o mecanismo de avaliação:
@@ -42,3 +46,17 @@ O avaliador nao tenta ser perfeito. Ele e propositalmente simples para deixar cl
 - citacoes obrigatorias;
 - formato JSON;
 - decisao de escalacao.
+
+## API
+
+```text
+FastAPI
+  |
+  +--> POST /ask
+  |       |
+  |       +--> answer_question()
+  |
+  +--> POST /eval/run
+          |
+          +--> evals.run_eval.run()
+```

@@ -3,6 +3,19 @@ name = "acme-agents-eval-challenge"
 version = "0.1.0"
 description = "Workshop challenge for evaluating and fixing a simulated multi-agent LLM support system."
 requires-python = ">=3.10"
+dependencies = [
+  "fastapi>=0.116.0",
+  "uvicorn[standard]>=0.35.0",
+]
+
+[project.optional-dependencies]
+observability = [
+  "langfuse>=3.3.1",
+  "braintrust>=0.2.0",
+]
+
+[dependency-groups]
+dev = []
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
