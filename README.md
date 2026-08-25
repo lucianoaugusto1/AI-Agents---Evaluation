@@ -29,6 +29,16 @@ Esse desenho simula um produto real o suficiente para discutir:
 - regressao entre versoes;
 - observabilidade de traces e scores.
 
+## Apresentacao do workshop
+
+A apresentacao HTML esta no proprio repositorio:
+
+```text
+presentation/index.html
+```
+
+Abra esse arquivo no navegador para conduzir a parte teorica e introduzir o desafio pratico.
+
 ## Objetivo do desafio
 
 Melhorar o score do sistema sem editar o dataset ou o avaliador.
