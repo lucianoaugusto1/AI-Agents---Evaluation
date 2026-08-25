@@ -77,6 +77,7 @@ Referencias:
 - Groq + Agno: https://console.groq.com/docs/agno
 - Groq tool use: https://console.groq.com/docs/tool-use
 - Agno docs: https://docs.agno.com/
+- Guia de achados esperados: `docs/evaluation-findings-guide.md`
 
 ## Caminho de correcao esperado
 

@@ -188,6 +188,7 @@ Guia detalhado:
 
 ```text
 docs/agno-groq-runtime.md
+docs/evaluation-findings-guide.md
 ```
 
 ## Observabilidade
