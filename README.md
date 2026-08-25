@@ -15,14 +15,13 @@ O assistente responde perguntas internas de colaboradores sobre:
 - acesso, VPN, MFA e seguranca;
 - perguntas gerais quando nao ha agente especializado.
 
-Por tras da API existe um sistema de agentes com dois runtimes:
+Por tras da API existe um sistema real de agentes com Agno + Groq:
 
 ```text
-FastAPI -> orchestrator -> runtime -> tools -> JSON response
+FastAPI -> orchestrator -> Agno Team -> Groq model -> tools -> JSON response
 ```
 
-- `scripted`: baseline deterministico com bugs intencionais, ideal para comparar scores durante o workshop.
-- `agno`: runtime real com Agno + Groq, agentes especializados e tools locais.
+Os agentes especializados usam tools locais para consultar politicas, versoes de documentos, matriz de aprovacao, perfis ficticios e tickets simulados. Os problemas do desafio aparecem em instrucoes, roteamento, uso de contexto, documentos obsoletos e decisoes de seguranca.
 
 Esse desenho simula um produto real o suficiente para discutir:
 
@@ -48,9 +47,10 @@ Melhorar o score do sistema sem editar o dataset ou o avaliador.
 
 Arquivos que podem ser alterados durante o desafio:
 
-- `src/acme_support_ai/agents.py`
+- `src/acme_support_ai/agno_runtime.py`
 - `src/acme_support_ai/orchestrator.py`
 - `src/acme_support_ai/knowledge_base.py`
+- `src/acme_support_ai/tools.py`
 - `src/acme_support_ai/policies/*.md`
 
 Arquivos que representam a suite de evaluation e nao devem ser editados:
@@ -74,8 +74,17 @@ Nao basta subir o score por tentativa e erro. A entrega precisa conectar falha, 
 ## Setup com uv
 
 ```bash
-uv sync
+uv sync --extra full
 ```
+
+Copie o arquivo de exemplo e preencha a chave da Groq:
+
+```bash
+cp .env.example .env
+# preencha GROQ_API_KEY
+```
+
+O sistema usa agentes reais. Perguntas e contexto ficticio retornado pelas tools sao enviados para Groq.
 
 ## Como rodar a API
 
@@ -129,9 +138,9 @@ Para testar uma pergunta manual:
 uv run python -m src.acme_support_ai.cli "Qual e o prazo para pedir reembolso de viagem?"
 ```
 
-## Runtime real com Agno + Groq
+## Runtime com Agno + Groq
 
-O projeto vem com um modo real de agentes usando Agno e Groq. Ele e opcional porque envia a pergunta e o contexto ficticio retornado pelas tools para a API da Groq.
+O projeto usa Agno + Groq como runtime padrao. Ele envia a pergunta e o contexto ficticio retornado pelas tools para a API da Groq.
 
 Instale as dependencias:
 
@@ -144,20 +153,19 @@ Configure:
 ```bash
 cp .env.example .env
 # preencha GROQ_API_KEY
-ACME_AGENT_RUNTIME=agno
 GROQ_MODEL=qwen/qwen3.6-27b
 ```
 
 Rode uma pergunta:
 
 ```bash
-ACME_AGENT_RUNTIME=agno uv run python -m src.acme_support_ai.cli "Qual é o prazo para pedir reembolso de viagem?"
+uv run python -m src.acme_support_ai.cli "Qual é o prazo para pedir reembolso de viagem?"
 ```
 
 Rode a evaluation usando agentes reais:
 
 ```bash
-ACME_AGENT_RUNTIME=agno uv run python -m evals.run_eval --verbose --trace-provider langfuse
+uv run python -m evals.run_eval --verbose --trace-provider langfuse
 ```
 
 Esse comando envia todas as perguntas do golden dataset e o contexto ficticio retornado pelas tools para Groq. Use apenas em ambiente aprovado para o workshop.
@@ -174,7 +182,7 @@ Esse comando envia todas as perguntas do golden dataset e o contexto ficticio re
 
 - Runtime Agno/Groq: `src/acme_support_ai/agno_runtime.py`
 - Tools dos agentes: `src/acme_support_ai/tools.py`
-- Selecao de runtime: `src/acme_support_ai/orchestrator.py`
+- Entrada unica do runtime: `src/acme_support_ai/orchestrator.py`
 
 Guia detalhado:
 
@@ -187,7 +195,7 @@ docs/agno-groq-runtime.md
 O padrao de observabilidade do projeto e Langfuse. Ele entra depois que cada caso do golden dataset e executado:
 
 ```text
-golden_dataset -> agente/scripted ou Agno+Groq -> judge -> scores -> Langfuse trace
+golden_dataset -> Agno+Groq agents -> judge -> scores -> Langfuse trace
 ```
 
 Para configurar, siga o guia:
@@ -196,7 +204,7 @@ Para configurar, siga o guia:
 docs/langfuse-setup.md
 ```
 
-O runner local continua disponivel como fallback sem conta externa. Para gerar um arquivo de trace em JSONL:
+O trace local continua disponivel como fallback sem conta Langfuse. Ele ainda usa os agentes Agno + Groq, mas grava a observabilidade em arquivo JSONL:
 
 ```bash
 uv run python -m evals.run_eval --verbose --trace-provider local
@@ -204,12 +212,12 @@ uv run python -m evals.run_eval --verbose --trace-provider local
 
 Isso cria arquivos em `runs/`.
 
-Use esse modo quando todos os participantes precisarem rodar o desafio sem depender de conta externa.
+Use esse modo quando todos os participantes tiverem Groq, mas nao tiverem conta Langfuse.
 
 Para usar Langfuse no fluxo principal:
 
 ```bash
-uv sync --extra observability
+uv sync --extra full
 cp .env.example .env
 # preencha LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY e LANGFUSE_BASE_URL
 uv run python -m evals.run_eval --trace-provider langfuse
@@ -234,19 +242,11 @@ Pesos:
 
 ## Meta sugerida
 
-- Baseline esperado: abaixo de `0.70`
+- Score inicial esperado: abaixo da meta
 - Meta do desafio: `0.85+`
 - Vitoria tecnica: melhorar score e explicar quais problemas foram encontrados
 
-Baseline atual esperado:
-
-```text
-overall      0.611
-relevance    0.450
-faithfulness 0.625
-format       0.900
-safety       0.460
-```
+O score inicial pode variar porque o runtime usa IA real. Registre o primeiro resultado antes de mexer no sistema e compare com o resultado final.
 
 ## Entrega dos grupos
 

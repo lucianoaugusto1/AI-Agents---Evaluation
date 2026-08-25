@@ -4,18 +4,17 @@
 Pergunta do usuario
         |
         v
-orchestrator.route()
+orchestrator.answer_question()
         |
-        +--> runtime scripted
-        |       +--> finance_agent()
-        |       +--> hr_agent()
-        |       +--> it_agent()
-        |       +--> general_agent()
+        v
+Agno team
         |
-        +--> runtime agno
-                +--> Agno team
-                +--> Groq model
-                +--> local tools
+        +--> Finance Policy Agent
+        +--> People Ops Agent
+        +--> IT Security Agent
+        |
+        v
+Groq model + local tools
         |
         v
 knowledge_base.retrieve()

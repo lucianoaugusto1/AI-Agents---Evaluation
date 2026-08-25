@@ -1,22 +1,29 @@
+import json
 import unittest
-import os
 
-from evals.run_eval import run
+from evals.judge import judge_case
+from evals.run_eval import load_cases
 
 
 class EvalRunnerTest(unittest.TestCase):
-    def setUp(self) -> None:
-        os.environ["ACME_AGENT_RUNTIME"] = "scripted"
+    def test_golden_dataset_has_expected_cases(self) -> None:
+        cases = load_cases()
+        self.assertEqual(len(cases), 10)
+        self.assertTrue(all(case["id"] and case["question"] for case in cases))
 
-    def test_eval_suite_runs_all_cases(self) -> None:
-        results = run(trace_provider="none")
-        self.assertEqual(len(results), 10)
-        self.assertTrue(all(0 <= result.total <= 1 for result in results))
+    def test_judge_scores_valid_json_response(self) -> None:
+        case = load_cases()[0]
+        payload = {
+            "answer": "O prazo atual é de 10 dias corridos após o retorno.",
+            "citations": ["finance_current"],
+            "confidence": "high",
+            "escalate": False,
+        }
 
-    def test_baseline_has_intentional_failures(self) -> None:
-        results = run(trace_provider="none")
-        failing = [result for result in results if result.total < 0.85]
-        self.assertGreaterEqual(len(failing), 4)
+        result = judge_case(case, json.dumps(payload))
+
+        self.assertTrue(0 <= result.total <= 1)
+        self.assertGreater(result.format, 0)
 
 
 if __name__ == "__main__":

@@ -1,11 +1,6 @@
 # Runtime Agno + Groq
 
-O projeto tem dois modos de execucao:
-
-- `scripted`: deterministico, sem chamada externa, usado como baseline do desafio.
-- `agno`: agentes reais usando Agno, modelo Groq e tools locais.
-
-Use o modo `agno` quando quiser demonstrar um fluxo mais parecido com producao: agentes com papeis especializados, uso de ferramentas e respostas variaveis avaliadas pela mesma suite.
+O projeto usa agentes reais com Agno, modelo Groq e tools locais. Esse fluxo foi escolhido para deixar o desafio mais proximo de producao: agentes com papeis especializados, uso de ferramentas e respostas variaveis avaliadas pela mesma suite.
 
 ## Onde ele se encaixa
 
@@ -15,14 +10,10 @@ FastAPI ou CLI
       v
 orchestrator.answer_question()
       |
-      +--> ACME_AGENT_RUNTIME=scripted -> agents.py
-      |
-      +--> ACME_AGENT_RUNTIME=agno
-              |
-              +--> agno_runtime.py
-              +--> Agno Team em modo route
-              +--> Groq model
-              +--> tools.py
+      +--> agno_runtime.py
+      +--> Agno Team em modo route
+      +--> Groq model
+      +--> tools.py
 ```
 
 ## Tools disponiveis
@@ -35,7 +26,7 @@ As tools ficam em `src/acme_support_ai/tools.py`:
 - `check_approval_matrix`: consulta regras de aprovacao.
 - `create_support_ticket`: cria ticket simulado.
 
-Essas tools retornam dados ficticios da ACME. Quando o runtime `agno` esta ativo, o resultado das tools pode ser enviado ao modelo da Groq como contexto.
+Essas tools retornam dados ficticios da ACME. O resultado das tools pode ser enviado ao modelo da Groq como contexto.
 
 ## Setup
 
@@ -47,7 +38,6 @@ cp .env.example .env
 Edite `.env`:
 
 ```bash
-ACME_AGENT_RUNTIME=agno
 GROQ_API_KEY=gsk_...
 GROQ_MODEL=qwen/qwen3.6-27b
 ```
@@ -57,13 +47,13 @@ O modelo default e `qwen/qwen3.6-27b`, uma das alternativas recomendadas pela do
 ## Rodar uma pergunta
 
 ```bash
-ACME_AGENT_RUNTIME=agno uv run python -m src.acme_support_ai.cli "Qual é o prazo para pedir reembolso de viagem?"
+uv run python -m src.acme_support_ai.cli "Qual é o prazo para pedir reembolso de viagem?"
 ```
 
 ## Rodar a evaluation com agentes reais
 
 ```bash
-ACME_AGENT_RUNTIME=agno uv run python -m evals.run_eval --verbose
+uv run python -m evals.run_eval --verbose
 ```
 
 Esse comando envia todas as perguntas do golden dataset e o contexto ficticio retornado pelas tools para Groq. Rode apenas com autorizacao do facilitador.
@@ -72,12 +62,12 @@ Esse comando envia todas as perguntas do golden dataset e o contexto ficticio re
 
 ```bash
 uv sync --extra full
-ACME_AGENT_RUNTIME=agno uv run python -m evals.run_eval --verbose --trace-provider langfuse
+uv run python -m evals.run_eval --verbose --trace-provider langfuse
 ```
 
 ## O que observar
 
-Compare o runtime `scripted` e o runtime `agno`:
+Compare os runs antes e depois das alteracoes:
 
 - score total;
 - faithfulness;

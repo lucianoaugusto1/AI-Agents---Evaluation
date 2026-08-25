@@ -32,11 +32,11 @@ def answer_with_agno(question: str) -> str:
     except ImportError as exc:
         raise RuntimeError(
             "Agno runtime is not installed. Run `uv sync --extra agents` "
-            "or use ACME_AGENT_RUNTIME=scripted."
+            "before using the API, CLI, or evaluations."
         ) from exc
 
     if not os.getenv("GROQ_API_KEY"):
-        raise RuntimeError("GROQ_API_KEY is required when ACME_AGENT_RUNTIME=agno.")
+        raise RuntimeError("GROQ_API_KEY is required to run the Agno + Groq agents.")
 
     model = Groq(id=os.getenv("GROQ_MODEL", "qwen/qwen3.6-27b"))
 

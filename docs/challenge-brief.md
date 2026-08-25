@@ -2,7 +2,7 @@
 
 Vocês fazem parte do time responsavel pelo assistente interno da ACME Corp.
 
-O sistema usa um orquestrador simples com agentes de RH, Financeiro, TI e Geral. A empresa quer colocar esse assistente em producao, mas antes precisa de uma suite minima de Evaluation.
+O sistema usa agentes reais de RH, Financeiro e TI com Agno + Groq e tools locais. A empresa quer colocar esse assistente em producao, mas antes precisa de uma suite minima de Evaluation.
 
 ## Missao
 
@@ -23,8 +23,10 @@ O sistema usa um orquestrador simples com agentes de RH, Financeiro, TI e Geral.
 ## Comandos
 
 ```bash
-uv sync
+uv sync --extra full
 ```
+
+Configure `.env` com `GROQ_API_KEY` antes de executar o sistema.
 
 ```bash
 uv run python -m evals.run_eval --verbose
@@ -40,18 +42,15 @@ uv run python -m src.acme_support_ai.cli "Qual é o prazo para pedir reembolso d
 
 ## Runtime real com agentes
 
-O baseline usa `ACME_AGENT_RUNTIME=scripted`. Para usar agentes reais com Agno + Groq:
-
 ```bash
-uv sync --extra agents
-ACME_AGENT_RUNTIME=agno uv run python -m src.acme_support_ai.cli "Qual é o prazo para pedir reembolso de viagem?"
+uv run python -m src.acme_support_ai.cli "Qual é o prazo para pedir reembolso de viagem?"
 ```
 
 Com Langfuse:
 
 ```bash
 uv sync --extra full
-ACME_AGENT_RUNTIME=agno uv run python -m evals.run_eval --verbose --trace-provider langfuse
+uv run python -m evals.run_eval --verbose --trace-provider langfuse
 ```
 
 O runtime real envia perguntas e contexto ficticio do projeto para Groq.
@@ -69,7 +68,7 @@ uv run python -m evals.run_eval --trace-provider local
 Modo Langfuse, se o facilitador fornecer chaves:
 
 ```bash
-uv sync --extra observability
+uv sync --extra full
 uv run python -m evals.run_eval --trace-provider langfuse
 ```
 
