@@ -145,7 +145,7 @@ Configure:
 cp .env.example .env
 # preencha GROQ_API_KEY
 ACME_AGENT_RUNTIME=agno
-GROQ_MODEL=openai/gpt-oss-120b
+GROQ_MODEL=qwen/qwen3.6-27b
 ```
 
 Rode uma pergunta:
@@ -159,6 +159,8 @@ Rode a evaluation usando agentes reais:
 ```bash
 ACME_AGENT_RUNTIME=agno uv run python -m evals.run_eval --verbose --trace-provider langfuse
 ```
+
+Esse comando envia todas as perguntas do golden dataset e o contexto ficticio retornado pelas tools para Groq. Use apenas em ambiente aprovado para o workshop.
 
 ### Tools disponiveis para os agentes
 

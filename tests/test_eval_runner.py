@@ -1,9 +1,13 @@
 import unittest
+import os
 
 from evals.run_eval import run
 
 
 class EvalRunnerTest(unittest.TestCase):
+    def setUp(self) -> None:
+        os.environ["ACME_AGENT_RUNTIME"] = "scripted"
+
     def test_eval_suite_runs_all_cases(self) -> None:
         results = run(trace_provider="none")
         self.assertEqual(len(results), 10)

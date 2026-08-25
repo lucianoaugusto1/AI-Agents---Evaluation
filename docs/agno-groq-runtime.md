@@ -49,10 +49,10 @@ Edite `.env`:
 ```bash
 ACME_AGENT_RUNTIME=agno
 GROQ_API_KEY=gsk_...
-GROQ_MODEL=openai/gpt-oss-120b
+GROQ_MODEL=qwen/qwen3.6-27b
 ```
 
-O modelo default e `openai/gpt-oss-120b`, recomendado pela documentacao de deprecacao da Groq como substituto para `llama-3.3-70b-versatile` em contas free/developer.
+O modelo default e `qwen/qwen3.6-27b`, uma das alternativas recomendadas pela documentacao de deprecacao da Groq para substituir `llama-3.3-70b-versatile` em contas free/developer. Ele tambem funcionou melhor neste projeto com tool calling + resposta JSON textual.
 
 ## Rodar uma pergunta
 
@@ -65,6 +65,8 @@ ACME_AGENT_RUNTIME=agno uv run python -m src.acme_support_ai.cli "Qual é o praz
 ```bash
 ACME_AGENT_RUNTIME=agno uv run python -m evals.run_eval --verbose
 ```
+
+Esse comando envia todas as perguntas do golden dataset e o contexto ficticio retornado pelas tools para Groq. Rode apenas com autorizacao do facilitador.
 
 ## Rodar com Langfuse
 
