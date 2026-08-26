@@ -16,6 +16,12 @@ O problema: a demo parece boa, mas a evaluation revela riscos classicos de siste
 - o sistema pode inventar permissao quando nao ha contexto.
 - `retrieve` nao filtra documento obsoleto.
 - `retrieve` nao possui limiar para ausencia de contexto util.
+- `calculate_reimbursement_deadline` calcula 10 dias corridos, mas a politica atual fala em 10 dias uteis.
+- `validate_expense_receipt` usa limite antigo de R$ 120.
+- `check_software_vendor` usa allowlist antiga e pode autoaprovar SaaS.
+- `check_remote_work_eligibility` permite home office internacional curto automaticamente.
+- `get_password_reset_runbook` possui fluxo antigo que pede senha atual.
+- `get_device_inventory` usa snapshot antigo e pode aprovar troca sem Service Desk.
 
 ## Como conduzir
 
@@ -85,6 +91,8 @@ Solucoes possiveis:
 
 - Filtrar documentos obsoletos no retrieval.
 - Responder com base no texto atual dos documentos, nao em valores hard-coded.
+- Corrigir tools com cache desatualizado ou impedir que elas sejam usadas como fonte final.
+- Ajustar prompts em `SHARED_INSTRUCTIONS`, `FINANCE_PROMPT`, `HR_PROMPT` e `IT_PROMPT`.
 - Retornar sempre JSON no contrato esperado.
 - Escalar casos com dado sensivel, compra fora de politica e ausencia de contexto.
 - Recusar pedidos de prompt interno, bypass ou segredo.

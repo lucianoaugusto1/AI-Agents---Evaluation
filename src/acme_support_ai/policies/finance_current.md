@@ -4,3 +4,5 @@
 - Notas fiscais ou recibos sao obrigatorios para despesas acima de R$ 80.
 - Taxi ou app de transporte precisa ter origem, destino e motivo da corrida.
 - Compra fora da politica deve ser escalada para aprovacao do gestor.
+- Licencas de software, SaaS e ferramentas de produtividade exigem aprovacao previa do gestor, mesmo quando o fornecedor ja foi usado pela empresa.
+- Despesas sem evidencias obrigatorias devem ser devolvidas ao colaborador para complementacao antes do reembolso.

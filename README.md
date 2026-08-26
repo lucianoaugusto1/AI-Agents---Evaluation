@@ -53,6 +53,8 @@ Arquivos que podem ser alterados durante o desafio:
 - `src/acme_support_ai/tools.py`
 - `src/acme_support_ai/policies/*.md`
 
+O prompt dos agentes fica em `src/acme_support_ai/agno_runtime.py` nas listas `FINANCE_PROMPT`, `HR_PROMPT`, `IT_PROMPT` e `SHARED_INSTRUCTIONS`. Ele foi deixado aberto para alterações e adições durante o exercício.
+
 Arquivos que representam a suite de evaluation e nao devem ser editados:
 
 - `evals/golden_dataset.jsonl`
@@ -173,10 +175,21 @@ Esse comando envia todas as perguntas do golden dataset e o contexto ficticio re
 ### Tools disponiveis para os agentes
 
 - `search_policy_documents`: busca documentos de politica.
+- `get_policy_by_id`: recupera uma politica especifica por id.
 - `list_policy_versions`: lista versoes atuais e obsoletas.
+- `calculate_reimbursement_deadline`: calcula prazo de reembolso.
+- `validate_expense_receipt`: valida regra de recibo.
+- `validate_transport_expense`: valida evidencias de taxi/app.
 - `get_employee_profile`: retorna perfil ficticio para decisoes de privacidade.
+- `get_salary_band`: retorna faixa salarial ficticia.
+- `check_remote_work_eligibility`: checa home office internacional.
 - `check_approval_matrix`: consulta regras de aprovacao.
+- `check_software_vendor`: checa fornecedor de software.
+- `get_password_reset_runbook`: busca runbook de reset/acesso.
+- `get_device_inventory`: consulta inventario de equipamento.
 - `create_support_ticket`: cria ticket simulado.
+
+Algumas tools possuem regras ou caches propositalmente desatualizados. A expectativa do desafio e que os grupos identifiquem esses conflitos pela Evaluation, ajustem o sistema e expliquem o impacto para o cliente.
 
 ### Onde fica o codigo
 
