@@ -6,3 +6,4 @@ __pycache__/
 *.pyc
 eval-results.json
 runs/
+rag-eval-results.json

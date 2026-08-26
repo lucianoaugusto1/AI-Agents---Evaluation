@@ -1,283 +1,221 @@
-# RAG Evals Workshop
+# Desafio de RAG — ACME Cloud
 
-Parte 2 do workshop de Evaluation. A parte de agentes fica na raiz do
-repositorio; esta atividade e independente e roda a partir desta pasta.
+Segunda atividade do workshop de Evaluation. A primeira, na raiz do
+repositorio, avalia um sistema de agentes. Esta avalia um **RAG**.
 
-A tiny RAG system plus a full evaluation pipeline, built for a **20-minute
-individual hands-on activity**.
+A ACME Cloud, empresa ficticia, tem um assistente de suporte ao cliente que
+responde perguntas sobre reembolso, planos, seguranca, limites de API,
+faturamento e SLA, consultando a propria base de documentos. Ele parece
+funcionar em uma demo, mas cita politica revogada, corta o documento no meio,
+inventa resposta quando nao encontra contexto e nao cita as fontes.
 
-The point of the activity:
+A ideia e a mesma da outra atividade:
 
-> You cannot look at one answer and decide subjectively that it "looks good".
-> You need a reproducible set of evals.
+> Voce nao consegue olhar uma resposta e decidir subjetivamente que ela "ficou
+> boa". Voce precisa de uma suite de evals que separe a culpa do retriever da
+> culpa do gerador.
 
-Everything runs **offline and deterministically** by default: no Docker, no
-database, no vector store, no API key required.
-
----
-
-## Setup
-
-```bash
-git clone https://github.com/lucianoaugusto1/AI-Agents---Evaluation.git
-cd AI-Agents---Evaluation/rag-evals
-
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-
-pip install -r requirements.txt
-```
-
-With `uv` instead:
-
-```bash
-uv venv && source .venv/bin/activate
-uv pip install -r requirements.txt
-```
-
-Optional (only to enable LLM-as-a-Judge):
-
-```bash
-cp .env.example .env             # then fill OPENAI_API_KEY
-```
-
-## Quick start
-
-```bash
-python scripts/run_rag.py                       # see the pipeline answer one question
-python scripts/evaluate.py                      # score the whole dataset
-python scripts/evaluate.py --save-baseline      # store the current scores
-python scripts/evaluate.py --compare-baseline   # compare after changing config
-python scripts/regression.py                    # PASS / FAIL against thresholds
-pytest                                          # unit tests
-```
-
-Useful flags: `--case <id>` (one test case), `--quiet` (summary table only),
-`--top-k N` (override TOP_K without editing the file).
-
----
-
-## Architecture
+## Arquitetura
 
 ```text
-Question → Retriever (BM25) → Top-K documents → Generator → Answer
-                    │                                 │
-              Context Precision                  Faithfulness
-              Context Recall                     Answer Relevancy
+pergunta -> chunking -> indice BM25 -> top-k chunks -> contexto -> Groq -> JSON
+                 |                          |                        |
+          Context Recall          Context Precision      Faithfulness / Relevancy / Format
 ```
 
 ```text
 rag-evals/
-├── data/documents/*.md      knowledge base (fictional SaaS docs, 1 file = 1 chunk)
-├── data/eval_dataset.json   10 test cases with expected relevant documents
-├── src/config.py            TOP_K and STRICT_CONTEXT_PROMPT — the two knobs
-├── src/retriever.py         pure-python BM25, no embeddings, no service
-├── src/generator.py         local extractive generator (or OpenAI, if configured)
-├── src/evals/               one file per metric + the judge abstraction
-├── scripts/                 run_rag.py, evaluate.py, regression.py
-└── thresholds.yaml          regression thresholds
+├── data/documents/*.md          base de conhecimento da ACME Cloud
+├── src/rag_evals/config.py      os parametros que o desafio pede para ajustar
+├── src/rag_evals/documents.py   carga do corpus e chunking
+├── src/rag_evals/retriever.py   BM25 puro, sem servico externo
+├── src/rag_evals/prompts.py     prompts do gerador
+├── src/rag_evals/pipeline.py    recuperacao -> contexto -> geracao
+├── evals/golden_dataset.jsonl   16 casos rotulados
+├── evals/metrics.py             context precision e recall (deterministicos)
+├── evals/judge.py               LLM-as-a-Judge + contrato de saida
+├── evals/observability.py       traces none / local / Langfuse
+└── scripts/                     ask.py, run_eval.py, setup_langfuse.py
 ```
 
-The retriever returns whole documents, so a "retrieved chunk" is simply a
-document id such as `refund_policy`. That keeps the eval output readable.
+O retriever e BM25 de verdade, implementado em Python, sem vector store nem
+servico externo: o ranking e identico em todas as maquinas do workshop, entao
+a discussao fica sobre o diagnostico e nao sobre "aqui deu diferente". A
+geracao e a avaliacao usam IA real via Groq.
 
----
+## Setup
 
-## Metrics
+O setup e o mesmo da atividade de agentes. Na raiz do repositorio:
 
-| Metric | What it measures | Which part of the RAG | How it is computed here |
+```bash
+uv sync
+cp .env.example .env
+# preencha GROQ_API_KEY
+```
+
+## Como rodar
+
+Uma pergunta, mostrando os chunks recuperados e o contexto que foi para o
+modelo:
+
+```bash
+uv run python rag-evals/scripts/ask.py "Qual e o prazo para pedir reembolso do plano Anual?"
+```
+
+A suite completa:
+
+```bash
+uv run python rag-evals/scripts/run_eval.py
+uv run python rag-evals/scripts/run_eval.py --verbose
+uv run python rag-evals/scripts/run_eval.py --case REEMB-002 --verbose
+uv run python rag-evals/scripts/run_eval.py --json
+```
+
+Os testes deterministicos, que nao consomem chave nenhuma:
+
+```bash
+cd rag-evals && uv run python -m unittest discover -s tests -t .
+```
+
+## Metricas
+
+| Metrica | O que mede | Culpa quem | Como e calculada |
 | --- | --- | --- | --- |
-| **Context Precision** | Are the retrieved documents relevant, and do the relevant ones come first? | Retriever (ranking) | **Deterministic** |
-| **Context Recall** | Did retrieval bring back everything the answer needs? | Retriever (coverage) | **Deterministic** |
-| **Faithfulness** | Is every claim in the answer supported by the retrieved context? | Generator (grounding) | Local judge **or** LLM-as-a-Judge |
-| **Answer Relevancy** | Does the answer actually answer the question, without padding? | Generator (usefulness) | Local judge **or** LLM-as-a-Judge |
+| **Context Precision** | Os documentos certos aparecem, e no topo? | Retriever (ranking) | Deterministica |
+| **Context Recall** | A recuperacao trouxe tudo que a resposta precisa? | Retriever (cobertura) | Deterministica |
+| **Faithfulness** | Toda afirmacao esta sustentada pelo contexto? | Gerador (ancoragem) | LLM-as-a-Judge |
+| **Answer Relevancy** | A resposta responde a pergunta? | Gerador (utilidade) | LLM-as-a-Judge |
+| **Format** | JSON valido, citacoes validas, recusa correta | Contrato | Deterministica |
 
-### Context Precision — deterministic
-
-```text
-Context Precision = (1/K) * Σ_{i=1..K} Precision@i
-Precision@i       = relevant documents among the first i / i
-```
-
-A document is relevant when its id appears in `expected_relevant_document_ids`.
-The formula is **order aware** (rank 1 contributes to every term, rank 5 to
-almost nothing) and **noise aware** (each extra irrelevant document drags the
-mean down). Plain `relevant / retrieved` would ignore ranking entirely.
-
-### Context Recall — deterministic
+Context Precision e o *Average Precision* dos documentos recuperados:
 
 ```text
-Context Recall = expected documents retrieved / expected documents
+AP = (1 / |esperados|) * soma de P@i nas posicoes i relevantes
 ```
 
-Multi-document test cases are the ones that expose low recall.
+Ela e sensivel a ordem — o documento certo em primeiro vale 1.0, em terceiro
+vale 0.33 — e nao pune por si so o simples aumento do top-k.
 
-### Faithfulness — LLM-as-a-Judge (or local fallback)
+Faithfulness tem um piso deterministico por cima do juiz: se a resposta contem
+uma das `forbidden_claims` do caso (por exemplo o prazo da politica revogada),
+a nota vai a zero independentemente do que o juiz achou. Numero errado de
+politica interna nao e questao de opiniao.
+
+Score final:
 
 ```text
-Faithfulness = supported claims / total claims
+30% faithfulness + 20% answer relevancy + 20% context recall
++ 15% context precision + 15% format
 ```
 
-Each sentence of the answer is a claim. The local judge marks a claim
-supported when ≥75% of its content words appear in the retrieved context; the
-OpenAI judge extracts the claims and judges each one, returning a short
-justification and the unsupported claims. The rubric is the same prompt in
-both cases (`src/evals/faithfulness.py`).
+## Objetivo do desafio
 
-### Answer Relevancy — LLM-as-a-Judge (or local fallback)
+Subir o score sem editar o dataset nem o avaliador.
+
+Pode alterar:
+
+- `src/rag_evals/config.py`
+- `src/rag_evals/documents.py`
+- `src/rag_evals/retriever.py`
+- `src/rag_evals/prompts.py`
+- `src/rag_evals/pipeline.py`
+
+Nao pode alterar:
+
+- `evals/golden_dataset.jsonl`
+- `evals/metrics.py`
+- `evals/judge.py`
+- `evals/run_eval.py`
+
+Meta: `0.85+`. O score inicial varia entre execucoes porque a geracao e a
+avaliacao usam IA real — registre o primeiro resultado antes de mexer em
+qualquer coisa.
+
+## Por onde comecar
+
+Rode a suite, escolha o pior caso e olhe o trace antes de mudar codigo. As
+perguntas que costumam abrir o diagnostico:
 
 ```text
-Answer Relevancy = 0.5 * coverage + 0.5 * focus
-
-coverage = question keywords present in the answer / question keywords
-focus    = answer sentences that are on topic / answer sentences
+O documento certo foi recuperado?           -> se nao, e retriever
+O trecho certo estava dentro do chunk?      -> se nao, e chunking
+O trecho sobreviveu ao corte do contexto?   -> se nao, e montagem de contexto
+O modelo respondeu so com o que recebeu?    -> se nao, e prompt
 ```
 
-`coverage` punishes dodging the question, `focus` punishes padding. As in
-RAGAS, a non-committal answer ("not enough information") scores **0** — it can
-be perfectly faithful and still not help the user. That is a real trade-off,
-not a bug.
+Comece por `--case REEMB-001 --verbose`: os dois documentos de reembolso
+entram no contexto, um dizendo 30 dias e o outro, revogado desde 2025, dizendo
+7 dias. Depois `--case PLANO-002 --verbose`: os dois documentos certos sao
+recuperados e mesmo assim metade da resposta nao aparece.
 
-### Deterministic vs LLM — read this
+Nao mexa em tudo de uma vez. Corrija uma classe de erro, rode a suite de novo
+e anote o efeito em cada metrica — inclusive quando o efeito for negativo.
 
-| Mode | When | Faithfulness / Answer Relevancy |
-| --- | --- | --- |
-| `local` (default) | no `OPENAI_API_KEY` | deterministic word-overlap judge |
-| `openai` | `OPENAI_API_KEY` set in `.env` | real LLM-as-a-Judge |
+## Observabilidade com Langfuse
 
-Set `EVAL_MODE` in `.env` to `local`, `openai` or `auto` (default: use the LLM
-if a key exists, otherwise fall back). **Context Precision and Context Recall
-never use an LLM** — they are always computed from the dataset. If an LLM call
-fails, the local judge takes over and prints a warning, so a flaky network
-never breaks the workshop.
+Cada caso vira um trace com dois spans filhos:
 
----
+```text
+rag-eval:REEMB-001
+├── retrieve    chunks recuperados, score de cada um, flag de obsoleto
+├── generate    prompt montado e resposta bruta do modelo
+└── scores      overall, context precision/recall, faithfulness, relevancy, format
+```
 
-## Workshop exercise — 20 minutes
+E onde da para ver, sem ler codigo, que chunk entrou no prompt e por que a
+resposta saiu errada.
 
-Everything below is **individual**. You do not need anyone else.
-
-### Part 1 — Baseline (3 min)
+Sem conta Langfuse, o mesmo conteudo vai para um arquivo JSONL:
 
 ```bash
-python scripts/evaluate.py --save-baseline
+uv run python rag-evals/scripts/run_eval.py --verbose --trace-provider local
+# grava em rag-evals/runs/
 ```
 
-Look at the four averages and answer for yourself:
-
-```text
-Which metric has the lowest score?
-Is the main problem retrieval or generation?
-```
-
-Hint: the first two metrics only blame the retriever, the last two only blame
-the generator.
-
-### Part 2 — Investigate one case (4 min)
+Com Langfuse, preencha `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` e
+`LANGFUSE_BASE_URL` no `.env` da raiz e suba o dataset e os evaluators:
 
 ```bash
-python scripts/evaluate.py --case refund-002
+uv run python rag-evals/scripts/setup_langfuse.py --dry-run   # valida sem criar
+uv run python rag-evals/scripts/setup_langfuse.py
+uv run python rag-evals/scripts/run_eval.py --verbose --trace-provider langfuse
 ```
 
-Look at: expected documents, retrieved documents, the generated answer, the
-four scores. Then answer:
+O script cria o dataset `acme-cloud-rag-golden-dataset` e tres code evaluators:
+`rag-json-contract`, `rag-grounding-rules` e `rag-retrieval-quality`. Eles sao
+deterministicos e rodam dentro do Langfuse, sobre os traces.
+
+## Entrega
 
 ```text
-Why did this case receive this score?
+Grupo:
+Score inicial:
+Score final:
+
+Falha 1:
+Evidencia (caso e trace):
+Correcao:
+
+Falha 2:
+Evidencia (caso e trace):
+Correcao:
+
+Falha 3:
+Evidencia (caso e trace):
+Correcao:
+
+Risco restante:
 ```
 
-(You should see `pricing_faq` — a decoy document — ranked first, and one of the
-two expected documents missing.) Try `--case hallucination-001` too: the
-context does not answer the question and the generator invents something.
+Nao basta subir o score por tentativa e erro: a entrega precisa ligar falha,
+evidencia e correcao.
 
-### Part 3 — Change TOP_K (5 min)
+## Limitacoes assumidas
 
-Edit `src/config.py`:
-
-```python
-TOP_K = 2   →   TOP_K = 5
-```
-
-```bash
-python scripts/evaluate.py --compare-baseline
-```
-
-```text
-Which metric improved?   Which metric got worse?   Why?
-```
-
-Expected shape of the result: **Context Recall goes up, Context Precision goes
-down**. More context is not automatically better — you also retrieved more
-noise, and in a real system that noise costs tokens, latency and grounding.
-
-### Part 4 — Faithfulness experiment (4 min)
-
-Put `TOP_K` back to `2`, then edit `src/config.py`:
-
-```python
-STRICT_CONTEXT_PROMPT = False   →   STRICT_CONTEXT_PROMPT = True
-```
-
-```bash
-python scripts/evaluate.py --compare-baseline
-```
-
-```text
-Did Faithfulness improve?   Did any other metric change?   Why?
-```
-
-With a real LLM this changes the system prompt (answer only from the context,
-admit when information is missing). In deterministic local mode the equivalent
-happens in `LocalGenerator`: the strict generator only keeps sentences that are
-really on topic and replies "not enough information" instead of inventing an
-answer. Retrieval metrics do not move at all — you changed the generator, not
-the retriever.
-
-### Part 5 — Regression test (4 min)
-
-```bash
-python scripts/regression.py     # expect PASS with the default config
-echo $?                          # 0
-```
-
-Now break it on purpose (for example `TOP_K = 5`, or `TOP_K = 1`) and run it
-again:
-
-```bash
-python scripts/regression.py
-echo $?                          # 1
-```
-
-You get the failing metric, the threshold and the actual value. Thresholds live
-in `thresholds.yaml`.
-
-```text
-This same command could run on every pull request.
-```
-
-It already does: `.github/workflows/evals.yml` installs the dependencies, runs
-`pytest` and then `python scripts/regression.py`. Because the exit code is 1 on
-failure, the PR is blocked — exactly like a traditional regression test suite,
-except the thing being protected is answer quality. CI runs with
-`EVAL_MODE=local`, so it costs nothing and never flakes on an external API.
-
----
-
-## Reference: the two knobs
-
-`src/config.py`
-
-```python
-TOP_K = 2                      # how many documents the retriever returns
-STRICT_CONTEXT_PROMPT = False  # how the generator is allowed to answer
-```
-
-## Limitations (on purpose)
-
-* One document = one chunk. Real systems chunk and embed; here BM25 keeps the
-  output readable and reproducible.
-* The local judge uses word overlap, not semantics. It is a stand-in that makes
-  the *pipeline* demonstrable without an API key — a real project should use an
-  LLM judge (or human labels) for Faithfulness and Answer Relevancy.
-* The dataset is small (10 cases) and hand-labelled, which is exactly what a
-  first eval set looks like in practice.
+- Recuperacao lexica (BM25), sem embeddings. Um RAG de producao usaria busca
+  vetorial ou hibrida; aqui a escolha e por reprodutibilidade na sala.
+- Dataset pequeno (16 casos) e rotulado a mao, que e exatamente a cara do
+  primeiro eval set de um projeto real.
+- O juiz e um LLM: ele varia entre execucoes. Por isso as metricas de
+  recuperacao e o contrato de saida sao deterministicos, e as afirmacoes
+  proibidas sao checadas por regra.

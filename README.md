@@ -6,30 +6,25 @@ A ACME Corp, empresa ficticia usada no exercicio, tem um assistente interno com 
 
 O desafio dos participantes e usar Evaluation para diagnosticar esses problemas, corrigir o sistema e demonstrar melhoria com metricas.
 
-## Atividade complementar: Evals para RAG
+## As duas atividades do workshop
 
-Alem do desafio de agentes, o workshop tem uma segunda atividade individual de
-~20 minutos sobre Evaluation em RAG, na pasta `rag-evals/`.
+Este repositorio tem dois desafios de Evaluation, com a mesma logica e
+sistemas diferentes:
 
-Ela usa um sistema RAG minimo (retriever BM25 + gerador local) e uma suite de
-evals com quatro metricas: Context Precision, Context Recall, Faithfulness e
-Answer Relevancy. Roda offline e de forma deterministica, sem Docker, sem vector
-store e sem API key; com `OPENAI_API_KEY` as duas ultimas metricas passam a usar
-LLM-as-a-Judge.
+| | Raiz do repositorio | `rag-evals/` |
+| --- | --- | --- |
+| Sistema | agentes Agno + Groq com tools | RAG sobre base de documentos |
+| Falhas plantadas | prompt, roteamento, tools desatualizadas | chunking, indice, contexto, prompt |
+| Metricas | relevance, faithfulness, format, safety | context precision/recall, faithfulness, answer relevancy, format |
+| Observabilidade | Langfuse (dataset + code evaluators) | Langfuse (traces com spans de retrieve e generate) |
+
+Os dois usam o mesmo `uv sync`, o mesmo `.env` e a mesma meta de score
+(`0.85+`). O desafio de RAG esta documentado em `rag-evals/README.md` e o guia
+do facilitador correspondente em `rag-evals/docs/guia-do-facilitador.md`.
 
 ```bash
-cd rag-evals
-pip install -r requirements.txt
-python scripts/evaluate.py --save-baseline
-python scripts/regression.py
+uv run python rag-evals/scripts/run_eval.py --verbose
 ```
-
-O exercicio pede que o participante mexa em dois knobs (`TOP_K` e
-`STRICT_CONTEXT_PROMPT` em `rag-evals/src/config.py`) e observe o trade-off entre
-as metricas, terminando em um teste de regressao que falha com exit code 1.
-
-Detalhes em `rag-evals/README.md`. O workflow `.github/workflows/rag-evals.yml`
-roda `pytest` e o teste de regressao dessa pasta em cada pull request.
 
 ## Contexto do produto
 
