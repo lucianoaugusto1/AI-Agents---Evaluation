@@ -115,11 +115,13 @@ Subir o score sem editar o dataset nem o avaliador.
 
 Pode alterar:
 
-- `acme_cloud_rag/config.py`
-- `acme_cloud_rag/documents.py`
-- `acme_cloud_rag/retriever.py`
-- `acme_cloud_rag/prompts.py`
-- `acme_cloud_rag/pipeline.py`
+- `acme_cloud_rag/config.py` — e onde estao todos os parametros do desafio;
+- `acme_cloud_rag/documents.py`, `retriever.py`, `prompts.py`, `pipeline.py` —
+  para quem quiser ir alem dos parametros.
+
+Da para chegar na meta **so ajustando `config.py`**. Editar o resto e opcional:
+o chunking por secao e a montagem de contexto por chunk inteiro sao as duas
+extensoes que rendem uma apresentacao melhor, mas nenhuma delas e necessaria.
 
 Nao pode alterar:
 

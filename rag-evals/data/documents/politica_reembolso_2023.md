@@ -1,18 +1,23 @@
-# Politica de Reembolso (versao 2023 - OBSOLETA)
+# Politica de Reembolso do Plano Anual e do Plano Mensal (versao 2023 - OBSOLETA)
 
 Versao: 2023.2
 Status: obsoleta, substituida pela versao 2025.1
 
-## Prazo para solicitar reembolso
+## Prazo para pedir reembolso do plano Anual
 
-Clientes do plano Anual podem solicitar reembolso integral em ate 7 dias
-corridos a partir da data da compra inicial. Clientes do plano Mensal tambem
-tem 7 dias corridos.
+O prazo para pedir reembolso do plano Anual e de 7 dias corridos a partir da
+data da compra inicial. O prazo para pedir reembolso do plano Mensal tambem e
+de 7 dias corridos a partir da data da compra inicial.
 
-## Como solicitar
+## Prazo para pedir reembolso de renovacao
 
-O pedido era feito por e-mail para financeiro@acmecloud.example. Esse canal
-foi desativado.
+A renovacao automatica do plano Anual nao era reembolsavel nesta versao da
+politica.
+
+## Como pedir reembolso
+
+O pedido de reembolso do plano Anual era feito por e-mail para
+financeiro@acmecloud.example. Esse canal foi desativado.
 
 ## Observacao
 

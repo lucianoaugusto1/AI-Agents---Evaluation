@@ -24,6 +24,9 @@ Configuracao (`acme_cloud_rag/config.py`):
   entao o modelo sempre recebe algo e sempre responde alguma coisa.
 - `DEDUPE_BY_DOCUMENT = False`: dois chunks do mesmo documento ocupam as duas
   vagas do top-k e o segundo documento nunca chega.
+- `REMOVE_STOPWORDS_FROM_QUERY = False`: a pergunta vai crua para o BM25 e
+  "qual", "para" e "posso" competem com os termos que importam. A lista
+  `STOPWORDS` ja existe em `retriever.py` e nao e usada.
 - `MAX_CONTEXT_CHARS = 700`: o contexto e cortado por numero de caracteres
   depois de concatenado, entao o ultimo chunk chega truncado no meio da frase.
 - `STRICT_GROUNDING = False`: usa o prompt permissivo.
@@ -33,11 +36,12 @@ Codigo:
 - `prompts.LOOSE_SYSTEM_PROMPT` manda complementar com conhecimento proprio e
   "nunca deixar o cliente sem resposta". Nao pede citacao nem recusa. O
   `STRICT_SYSTEM_PROMPT` correto ja esta no arquivo, so nao esta ligado.
-- `retriever.normalize_query` manda a pergunta crua para o BM25: a lista
-  `STOPWORDS` existe e nao e usada, entao "qual", "para", "posso" competem com
-  os termos que importam.
 - `pipeline.build_context` corta a string ja concatenada, sem verificar se
-  cortou no meio de um chunk.
+  cortou no meio de um chunk. `MAX_CONTEXT_CHARS` contorna o problema; cortar
+  por chunk inteiro e a correcao de verdade, e fica como extensao opcional.
+- `documents.split_text` corta por numero de caracteres. `CHUNK_SIZE` e
+  `CHUNK_OVERLAP` resolvem na pratica; chunking por secao e a outra extensao
+  opcional.
 
 ## Onde cada bug aparece
 
@@ -64,7 +68,16 @@ Nao existe uma resposta unica. As mudancas que costumam levar a meta:
    mantem a tabela e o paragrafo inteiros.
 5. `MAX_CONTEXT_CHARS` maior, ou corte por chunk em vez de por caractere.
 6. `MIN_RELEVANCE_SCORE` acima de zero — habilita a recusa de `FORA-001`.
-7. Remover stopwords em `normalize_query`.
+7. `REMOVE_STOPWORDS_FROM_QUERY = True`.
+
+Todas as sete sao mudanca de parametro em `acme_cloud_rag/config.py`: da para
+bater a meta sem escrever uma linha de logica. Quem terminar antes tem duas
+extensoes opcionais, que exigem codigo e rendem uma apresentacao melhor:
+
+- chunking por secao do Markdown, em vez de corte por numero de caracteres
+  (`documents.split_text`);
+- montagem de contexto que descarta o chunk inteiro quando ele nao cabe, em
+  vez de cortar no meio da frase (`pipeline.build_context`).
 
 Vale provocar o trade-off: subir `TOP_K` sem dedup nao resolve, e subir demais
 derruba a precisao e enche o prompt de ruido, que em producao custa token,

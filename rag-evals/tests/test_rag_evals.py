@@ -140,3 +140,21 @@ class JudgeTests(unittest.TestCase):
 
     def test_weights_sum_to_one(self) -> None:
         self.assertAlmostEqual(sum(self.judge.WEIGHTS.values()), 1.0)
+
+
+class ConfigFlagTests(unittest.TestCase):
+    def test_stopword_flag_changes_the_query_terms(self) -> None:
+        import acme_cloud_rag.retriever as retriever
+
+        original = retriever.REMOVE_STOPWORDS_FROM_QUERY
+        try:
+            retriever.REMOVE_STOPWORDS_FROM_QUERY = False
+            crua = retriever.normalize_query("Qual e o prazo para pedir reembolso?")
+            retriever.REMOVE_STOPWORDS_FROM_QUERY = True
+            limpa = retriever.normalize_query("Qual e o prazo para pedir reembolso?")
+        finally:
+            retriever.REMOVE_STOPWORDS_FROM_QUERY = original
+
+        self.assertIn("qual", crua)
+        self.assertNotIn("qual", limpa)
+        self.assertIn("reembolso", limpa)

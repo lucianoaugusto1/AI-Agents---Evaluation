@@ -30,8 +30,12 @@ MIN_RELEVANCE_SCORE = 0.0
 # Impedir que dois chunks do mesmo documento ocupem o top-k.
 DEDUPE_BY_DOCUMENT = False
 
+# Remover stopwords ("qual", "para", "posso"...) da pergunta antes da busca.
+# A lista STOPWORDS ja existe em retriever.py.
+REMOVE_STOPWORDS_FROM_QUERY = False
+
 # Limite de caracteres do contexto montado para o prompt.
-MAX_CONTEXT_CHARS = 700
+MAX_CONTEXT_CHARS = 420
 
 # --- Geracao ---------------------------------------------------------------
 # Instruir o modelo a citar as fontes e a recusar quando o contexto nao cobre

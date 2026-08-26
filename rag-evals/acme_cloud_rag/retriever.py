@@ -12,7 +12,12 @@ import math
 import re
 from dataclasses import dataclass
 
-from .config import DEDUPE_BY_DOCUMENT, MIN_RELEVANCE_SCORE, TOP_K
+from .config import (
+    DEDUPE_BY_DOCUMENT,
+    MIN_RELEVANCE_SCORE,
+    REMOVE_STOPWORDS_FROM_QUERY,
+    TOP_K,
+)
 from .documents import Chunk, build_chunks
 
 K1 = 1.5
@@ -35,9 +40,14 @@ def tokenize(text: str) -> list[str]:
 def normalize_query(query: str) -> list[str]:
     """Tratamento da query antes da busca.
 
-    Hoje a query vai crua para o BM25: nenhuma stopword e removida.
+    Com `REMOVE_STOPWORDS_FROM_QUERY` desligado a pergunta vai crua para o
+    BM25 e palavras como "qual", "para" e "posso" competem com os termos que
+    de fato importam.
     """
-    return tokenize(query)
+    terms = tokenize(query)
+    if REMOVE_STOPWORDS_FROM_QUERY:
+        return [term for term in terms if term not in STOPWORDS]
+    return terms
 
 
 @dataclass(frozen=True)
