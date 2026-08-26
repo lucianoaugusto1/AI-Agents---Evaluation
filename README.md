@@ -6,6 +6,31 @@ A ACME Corp, empresa ficticia usada no exercicio, tem um assistente interno com 
 
 O desafio dos participantes e usar Evaluation para diagnosticar esses problemas, corrigir o sistema e demonstrar melhoria com metricas.
 
+## Atividade complementar: Evals para RAG
+
+Alem do desafio de agentes, o workshop tem uma segunda atividade individual de
+~20 minutos sobre Evaluation em RAG, na pasta `rag-evals/`.
+
+Ela usa um sistema RAG minimo (retriever BM25 + gerador local) e uma suite de
+evals com quatro metricas: Context Precision, Context Recall, Faithfulness e
+Answer Relevancy. Roda offline e de forma deterministica, sem Docker, sem vector
+store e sem API key; com `OPENAI_API_KEY` as duas ultimas metricas passam a usar
+LLM-as-a-Judge.
+
+```bash
+cd rag-evals
+pip install -r requirements.txt
+python scripts/evaluate.py --save-baseline
+python scripts/regression.py
+```
+
+O exercicio pede que o participante mexa em dois knobs (`TOP_K` e
+`STRICT_CONTEXT_PROMPT` em `rag-evals/src/config.py`) e observe o trade-off entre
+as metricas, terminando em um teste de regressao que falha com exit code 1.
+
+Detalhes em `rag-evals/README.md`. O workflow `.github/workflows/rag-evals.yml`
+roda `pytest` e o teste de regressao dessa pasta em cada pull request.
+
 ## Contexto do produto
 
 O assistente responde perguntas internas de colaboradores sobre:
