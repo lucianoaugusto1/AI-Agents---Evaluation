@@ -50,6 +50,7 @@ Com Langfuse:
 
 ```bash
 uv sync
+uv run python scripts/setup_langfuse.py
 uv run python -m evals.run_eval --verbose --trace-provider langfuse
 ```
 
@@ -69,6 +70,7 @@ Modo Langfuse, se o facilitador fornecer chaves:
 
 ```bash
 uv sync
+uv run python scripts/setup_langfuse.py
 uv run python -m evals.run_eval --trace-provider langfuse
 ```
 

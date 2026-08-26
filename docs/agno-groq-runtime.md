@@ -82,6 +82,7 @@ Esse comando envia todas as perguntas do golden dataset e o contexto ficticio re
 
 ```bash
 uv sync
+uv run python scripts/setup_langfuse.py
 uv run python -m evals.run_eval --verbose --trace-provider langfuse
 ```
 

@@ -167,10 +167,10 @@ uv run python -m src.acme_support_ai.cli "Qual é o prazo para pedir reembolso d
 Rode a evaluation usando agentes reais:
 
 ```bash
-uv run python -m evals.run_eval --verbose --trace-provider langfuse
+uv run python -m evals.run_eval --verbose
 ```
 
-Esse comando envia todas as perguntas do golden dataset e o contexto ficticio retornado pelas tools para Groq. Use apenas em ambiente aprovado para o workshop.
+Esse comando envia todas as perguntas do golden dataset e o contexto ficticio retornado pelas tools para Groq. Use apenas em ambiente aprovado para o workshop. Para registrar dataset, evaluators, traces e scores no Langfuse, siga a seção de observabilidade abaixo.
 
 ### Tools disponiveis para os agentes
 
@@ -228,19 +228,32 @@ Isso cria arquivos em `runs/`.
 
 Use esse modo quando todos os participantes tiverem Groq, mas nao tiverem conta Langfuse.
 
-Para usar Langfuse no fluxo principal:
+Para usar Langfuse no fluxo principal, primeiro configure as credenciais e suba o dataset/evaluators:
 
 ```bash
 uv sync
 cp .env.example .env
-# preencha LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY e LANGFUSE_BASE_URL
-uv run python -m evals.run_eval --trace-provider langfuse
+# preencha GROQ_API_KEY, LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY e LANGFUSE_BASE_URL
+uv run python scripts/setup_langfuse.py
 ```
 
-Para criar o golden dataset e os code evaluators determinísticos no Langfuse:
+O script cria no Langfuse:
+
+- dataset `acme-agents-golden-dataset`;
+- code evaluator `acme-json-contract`;
+- code evaluator `acme-golden-dataset-rules`;
+- code evaluator `acme-business-risk-flags`.
+
+Para validar o setup sem criar nada:
 
 ```bash
-uv run python scripts/setup_langfuse.py
+uv run python scripts/setup_langfuse.py --dry-run
+```
+
+Depois rode a Evaluation enviando traces e scores para o Langfuse:
+
+```bash
+uv run python -m evals.run_eval --verbose --trace-provider langfuse
 ```
 
 Recomendacao para workshop: use `--trace-provider local` se a turma nao tiver credenciais, e use `--trace-provider langfuse` na maquina do facilitador para mostrar traces, scores e comparacao entre runs.

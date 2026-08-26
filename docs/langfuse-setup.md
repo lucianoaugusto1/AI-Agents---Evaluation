@@ -47,7 +47,7 @@ Use Langfuse Cloud ou uma instancia self-hosted.
 
 No projeto Langfuse, gere as API keys do ambiente que sera usado no workshop.
 
-## 2. Instalar dependencias opcionais
+## 2. Instalar dependências
 
 ```bash
 uv sync
@@ -64,6 +64,8 @@ cp .env.example .env
 Preencha:
 
 ```bash
+GROQ_API_KEY=gsk_...
+GROQ_MODEL=qwen/qwen3.6-27b
 LANGFUSE_PUBLIC_KEY=pk-lf-...
 LANGFUSE_SECRET_KEY=sk-lf-...
 LANGFUSE_BASE_URL=https://cloud.langfuse.com
@@ -71,22 +73,7 @@ LANGFUSE_BASE_URL=https://cloud.langfuse.com
 
 Se estiver usando Langfuse self-hosted, troque `LANGFUSE_BASE_URL` pela URL da sua instancia.
 
-## 4. Rodar a evaluation com trace
-
-```bash
-uv run python -m evals.run_eval --verbose --trace-provider langfuse
-```
-
-Com todas as dependencias opcionais:
-
-```bash
-uv sync
-uv run python -m evals.run_eval --verbose --trace-provider langfuse
-```
-
-Ao final, o runner chama `flush()` para enviar os eventos pendentes.
-
-## 5. Criar dataset e code evaluators no Langfuse
+## 4. Criar dataset e code evaluators no Langfuse
 
 O projeto inclui um script para subir o golden dataset e criar os code evaluators determinísticos no Langfuse:
 
@@ -94,7 +81,7 @@ O projeto inclui um script para subir o golden dataset e criar os code evaluator
 uv run python scripts/setup_langfuse.py
 ```
 
-Para revisar o que será criado sem chamar a API:
+Antes de chamar a API do Langfuse, revise o payload com:
 
 ```bash
 uv run python scripts/setup_langfuse.py --dry-run
@@ -122,6 +109,26 @@ evals/langfuse_evaluators/
 Os code evaluators usam apenas lógica determinística: parse de JSON, keywords esperadas, citações obrigatórias, claims proibidas, escalonamento esperado e flags de risco de negócio. Eles seguem o contrato atual de Code Evaluators do Langfuse, que executa código Python ou TypeScript sobre observations/experiments.
 
 Observação: a API pública de criação de evaluators ainda é marcada como unstable pelo Langfuse. Se a sua instância bloquear esse endpoint, use os arquivos em `evals/langfuse_evaluators/` para criar os evaluators manualmente pela UI.
+
+## 5. Rodar a evaluation com trace
+
+```bash
+uv run python -m evals.run_eval --verbose --trace-provider langfuse
+```
+
+Ao final, o runner chama `flush()` para enviar os eventos pendentes.
+
+O fluxo recomendado para workshop é:
+
+```bash
+uv sync
+cp .env.example .env
+uv run python scripts/setup_langfuse.py --dry-run
+uv run python scripts/setup_langfuse.py
+uv run python -m evals.run_eval --verbose --trace-provider langfuse
+```
+
+Esse fluxo deixa o golden dataset e os evaluators disponíveis no Langfuse antes de comparar runs.
 
 ## 6. O que olhar no Langfuse
 

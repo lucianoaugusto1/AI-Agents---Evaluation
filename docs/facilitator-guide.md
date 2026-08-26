@@ -51,6 +51,7 @@ uv run python -m evals.run_eval --verbose --trace-provider local
 
 ```bash
 uv sync
+uv run python scripts/setup_langfuse.py
 uv run python -m evals.run_eval --verbose --trace-provider langfuse
 ```
 
@@ -67,6 +68,7 @@ Para demonstrar:
 
 ```bash
 uv sync
+uv run python scripts/setup_langfuse.py
 uv run python -m evals.run_eval --verbose --trace-provider langfuse
 ```
 
