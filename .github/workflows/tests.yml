@@ -1,0 +1,22 @@
+name: Testes
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  deterministic-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Apenas os testes que nao dependem de chave de API. As suites de
+      # evaluation usam IA real e rodam na maquina dos participantes.
+      - name: Testes do desafio de RAG
+        working-directory: rag-evals
+        run: python -m unittest discover -s tests -t . -v
