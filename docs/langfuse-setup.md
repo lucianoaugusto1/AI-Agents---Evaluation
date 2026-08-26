@@ -86,7 +86,44 @@ uv run python -m evals.run_eval --verbose --trace-provider langfuse
 
 Ao final, o runner chama `flush()` para enviar os eventos pendentes.
 
-## 5. O que olhar no Langfuse
+## 5. Criar dataset e code evaluators no Langfuse
+
+O projeto inclui um script para subir o golden dataset e criar os code evaluators determinísticos no Langfuse:
+
+```bash
+uv run python scripts/setup_langfuse.py
+```
+
+Para revisar o que será criado sem chamar a API:
+
+```bash
+uv run python scripts/setup_langfuse.py --dry-run
+```
+
+O script cria:
+
+- dataset `acme-agents-golden-dataset`;
+- evaluator `acme-json-contract`;
+- evaluator `acme-golden-dataset-rules`;
+- evaluator `acme-business-risk-flags`.
+
+Se um evaluator com o mesmo nome já existir, o script pula a criação para evitar gerar nova versão acidental. Para criar uma nova versão explicitamente:
+
+```bash
+uv run python scripts/setup_langfuse.py --skip-dataset --force-evaluator-version
+```
+
+Os evaluators ficam versionados no repo em:
+
+```text
+evals/langfuse_evaluators/
+```
+
+Os code evaluators usam apenas lógica determinística: parse de JSON, keywords esperadas, citações obrigatórias, claims proibidas, escalonamento esperado e flags de risco de negócio. Eles seguem o contrato atual de Code Evaluators do Langfuse, que executa código Python ou TypeScript sobre observations/experiments.
+
+Observação: a API pública de criação de evaluators ainda é marcada como unstable pelo Langfuse. Se a sua instância bloquear esse endpoint, use os arquivos em `evals/langfuse_evaluators/` para criar os evaluators manualmente pela UI.
+
+## 6. O que olhar no Langfuse
 
 Durante o workshop, abra os traces e compare:
 
@@ -97,7 +134,7 @@ Durante o workshop, abra os traces e compare:
 - quais problemas o judge reportou;
 - como o score muda depois de cada correcao.
 
-## 6. Como usar isso na discussao
+## 7. Como usar isso na discussao
 
 Use Langfuse para mostrar que Evaluation nao e apenas uma nota final. Ela ajuda o time a investigar:
 

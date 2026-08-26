@@ -3,6 +3,7 @@ import unittest
 
 from evals.judge import judge_case
 from evals.run_eval import load_cases
+from scripts.setup_langfuse import EVALUATOR_FILES, case_to_dataset_item
 from src.acme_support_ai.tools import (
     calculate_reimbursement_deadline,
     check_remote_work_eligibility,
@@ -41,6 +42,24 @@ class EvalRunnerTest(unittest.TestCase):
         self.assertEqual(deadline["rule_used"], "10 dias corridos")
         self.assertTrue(vendor["auto_approved"])
         self.assertTrue(remote_work["automatic_approval"])
+
+    def test_langfuse_dataset_item_contains_expected_output(self) -> None:
+        case = load_cases()[0]
+        item = case_to_dataset_item(case, "acme-test")
+
+        self.assertEqual(item["input"], {"question": case["question"]})
+        self.assertEqual(item["expected_output"]["expected_keywords"], case["expected_keywords"])
+        self.assertEqual(item["metadata"]["case_id"], case["id"])
+
+    def test_langfuse_evaluator_sources_exist(self) -> None:
+        self.assertEqual(
+            set(EVALUATOR_FILES),
+            {
+                "acme-json-contract",
+                "acme-golden-dataset-rules",
+                "acme-business-risk-flags",
+            },
+        )
 
 
 if __name__ == "__main__":

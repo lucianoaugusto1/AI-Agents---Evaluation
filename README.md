@@ -237,6 +237,12 @@ cp .env.example .env
 uv run python -m evals.run_eval --trace-provider langfuse
 ```
 
+Para criar o golden dataset e os code evaluators determinísticos no Langfuse:
+
+```bash
+uv run python scripts/setup_langfuse.py
+```
+
 Recomendacao para workshop: use `--trace-provider local` se a turma nao tiver credenciais, e use `--trace-provider langfuse` na maquina do facilitador para mostrar traces, scores e comparacao entre runs.
 
 ## Score
