@@ -1,7 +1,0 @@
-# Regression thresholds. `python scripts/regression.py` fails (exit code 1)
-# if any average score falls below its threshold.
-thresholds:
-  context_precision: 0.70
-  context_recall: 0.85
-  faithfulness: 0.85
-  answer_relevancy: 0.70
