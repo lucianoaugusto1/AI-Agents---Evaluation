@@ -3,7 +3,7 @@ import unittest
 
 from evals.judge import judge_case
 from evals.run_eval import load_cases
-from scripts.setup_langfuse import EVALUATOR_FILES, case_to_dataset_item
+from scripts.setup_langfuse import EVALUATION_RULES, EVALUATOR_FILES, case_to_dataset_item
 from src.acme_support_ai.tools import (
     calculate_reimbursement_deadline,
     check_remote_work_eligibility,
@@ -60,6 +60,17 @@ class EvalRunnerTest(unittest.TestCase):
                 "acme-business-risk-flags",
             },
         )
+
+    def test_langfuse_evaluation_rules_are_defined(self) -> None:
+        self.assertEqual(
+            set(EVALUATION_RULES),
+            {
+                "acme-json-contract-live-observations",
+                "acme-golden-dataset-rules-experiments",
+                "acme-business-risk-flags-live-observations",
+            },
+        )
+        self.assertEqual(EVALUATION_RULES["acme-golden-dataset-rules-experiments"]["target"], "experiment")
 
 
 if __name__ == "__main__":

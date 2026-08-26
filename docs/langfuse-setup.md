@@ -93,11 +93,24 @@ O script cria:
 - evaluator `acme-json-contract`;
 - evaluator `acme-golden-dataset-rules`;
 - evaluator `acme-business-risk-flags`.
+- evaluation rule `acme-json-contract-live-observations`;
+- evaluation rule `acme-business-risk-flags-live-observations`;
+- evaluation rule `acme-golden-dataset-rules-experiments`.
+
+As duas primeiras rules avaliam observations live. A rule `acme-golden-dataset-rules-experiments` usa target `experiment`, porque precisa ler o `expected_output` dos itens do dataset.
+
+Importante: Langfuse executa um preflight quando uma code evaluation rule é criada com `enabled=true`. Se a instância rejeitar esse preflight, o script cria a rule desativada e mostra um aviso. Nesse caso, abra a rule no Langfuse, rode o teste do evaluator com uma observation/experiment de exemplo e habilite pela UI. Code evaluators também dependem do runtime/dispatcher de code evaluation estar disponível no projeto.
 
 Se um evaluator com o mesmo nome já existir, o script pula a criação para evitar gerar nova versão acidental. Para criar uma nova versão explicitamente:
 
 ```bash
 uv run python scripts/setup_langfuse.py --skip-dataset --force-evaluator-version
+```
+
+Para recriar apenas as rules:
+
+```bash
+uv run python scripts/setup_langfuse.py --skip-dataset --skip-evaluators
 ```
 
 Os evaluators ficam versionados no repo em:

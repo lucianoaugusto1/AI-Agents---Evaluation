@@ -23,6 +23,27 @@ EVALUATOR_FILES = {
     "acme-business-risk-flags": "business_risk_flags.py",
 }
 
+EVALUATION_RULES = {
+    "acme-json-contract-live-observations": {
+        "evaluator": "acme-json-contract",
+        "target": "observation",
+    },
+    "acme-business-risk-flags-live-observations": {
+        "evaluator": "acme-business-risk-flags",
+        "target": "observation",
+    },
+    "acme-golden-dataset-rules-experiments": {
+        "evaluator": "acme-golden-dataset-rules",
+        "target": "experiment",
+    },
+}
+
+PRECHECK_ERROR_HINT = (
+    "Langfuse rejected enabled=true during code evaluator preflight. "
+    "The rule was created disabled; test and enable it in the Langfuse UI, "
+    "or verify that code evaluator execution is available for this project."
+)
+
 
 def load_cases() -> list[dict[str, Any]]:
     return [
@@ -85,6 +106,16 @@ def create_langfuse_api():
         username=public_key,
         password=secret_key,
     )
+
+
+def langfuse_api_credentials() -> tuple[str, str, str]:
+    load_env_file()
+    public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
+    secret_key = os.getenv("LANGFUSE_SECRET_KEY")
+    base_url = os.getenv("LANGFUSE_BASE_URL", "https://cloud.langfuse.com").rstrip("/")
+    if not public_key or not secret_key:
+        raise RuntimeError("LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY are required.")
+    return base_url, public_key, secret_key
 
 
 def ensure_dataset(dataset_name: str, dry_run: bool) -> None:
@@ -169,11 +200,111 @@ def create_code_evaluators(dry_run: bool, force_new_version: bool) -> bool:
     return ok
 
 
+def create_evaluation_rules(dry_run: bool) -> bool:
+    if dry_run:
+        for name, config in EVALUATION_RULES.items():
+            print(
+                "[dry-run] evaluation_rule="
+                f"{name} evaluator={config['evaluator']} target={config['target']} enabled=true"
+            )
+        return True
+
+    import httpx
+
+    api = create_langfuse_api()
+    base_url, public_key, secret_key = langfuse_api_credentials()
+    ok = True
+    existing_by_name = {}
+    try:
+        existing = api.unstable.evaluation_rules.list(limit=100)
+        existing_by_name = {
+            getattr(rule, "name", ""): getattr(rule, "id", None)
+            for rule in getattr(existing, "data", [])
+        }
+    except Exception as exc:
+        print(f"could not list existing evaluation rules; will try to create all ({exc})")
+
+    for name, config in EVALUATION_RULES.items():
+        payload = {
+            "name": name,
+            "evaluators": [
+                {
+                    "evaluator": {
+                        "name": config["evaluator"],
+                        "type": "code",
+                    }
+                }
+            ],
+            "target": config["target"],
+            "enabled": True,
+            "sampling": 1.0,
+        }
+
+        existing_id = existing_by_name.get(name)
+        try:
+            if existing_id:
+                update_payload = {key: value for key, value in payload.items() if key != "name"}
+                try:
+                    response = httpx.patch(
+                        f"{base_url}/api/public/unstable/evaluation-rules/{existing_id}",
+                        auth=(public_key, secret_key),
+                        json=update_payload,
+                        timeout=60,
+                    )
+                    response.raise_for_status()
+                    print(f"updated evaluation rule: {name} ({existing_id})")
+                except httpx.HTTPStatusError as first_exc:
+                    disabled_payload = {**update_payload, "enabled": False}
+                    response = httpx.patch(
+                        f"{base_url}/api/public/unstable/evaluation-rules/{existing_id}",
+                        auth=(public_key, secret_key),
+                        json=disabled_payload,
+                        timeout=60,
+                    )
+                    response.raise_for_status()
+                    print(f"updated evaluation rule disabled: {name} ({existing_id})")
+                    print(f"activation warning: {PRECHECK_ERROR_HINT}")
+                    print(f"preflight response: {first_exc.response.text[:500]}")
+            else:
+                try:
+                    response = httpx.post(
+                        f"{base_url}/api/public/unstable/evaluation-rules",
+                        auth=(public_key, secret_key),
+                        json=payload,
+                        timeout=60,
+                    )
+                    response.raise_for_status()
+                    rule_id = response.json().get("id", "<unknown>")
+                    print(f"created evaluation rule: {name} ({rule_id})")
+                except httpx.HTTPStatusError as first_exc:
+                    if payload["enabled"] is not True:
+                        raise
+                    disabled_payload = {**payload, "enabled": False}
+                    response = httpx.post(
+                        f"{base_url}/api/public/unstable/evaluation-rules",
+                        auth=(public_key, secret_key),
+                        json=disabled_payload,
+                        timeout=60,
+                    )
+                    response.raise_for_status()
+                    rule_id = response.json().get("id", "<unknown>")
+                    print(f"created evaluation rule disabled: {name} ({rule_id})")
+                    print(f"activation warning: {PRECHECK_ERROR_HINT}")
+                    print(f"preflight response: {first_exc.response.text[:500]}")
+        except Exception as exc:
+            print(f"could not create evaluation rule: {name} ({exc})")
+            if "response" in locals():
+                print(f"response body: {response.text[:1000]}")
+            ok = False
+    return ok
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Create ACME golden dataset and code evaluators in Langfuse.")
     parser.add_argument("--dataset-name", default=DEFAULT_DATASET_NAME)
     parser.add_argument("--skip-dataset", action="store_true")
     parser.add_argument("--skip-evaluators", action="store_true")
+    parser.add_argument("--skip-rules", action="store_true")
     parser.add_argument("--force-evaluator-version", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
@@ -185,6 +316,10 @@ def main() -> None:
             dry_run=args.dry_run,
             force_new_version=args.force_evaluator_version,
         )
+        if not ok:
+            raise SystemExit(1)
+    if not args.skip_rules:
+        ok = create_evaluation_rules(dry_run=args.dry_run)
         if not ok:
             raise SystemExit(1)
 

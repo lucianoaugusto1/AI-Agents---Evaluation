@@ -243,6 +243,11 @@ O script cria no Langfuse:
 - code evaluator `acme-json-contract`;
 - code evaluator `acme-golden-dataset-rules`;
 - code evaluator `acme-business-risk-flags`.
+- evaluation rule ativa para JSON contract em observations;
+- evaluation rule ativa para business risk flags em observations;
+- evaluation rule ativa para golden dataset rules em experiments/dataset runs.
+
+Se o Langfuse rejeitar o preflight de ativação via API, o script cria as rules desativadas e imprime um aviso. Nesse caso, teste e habilite as rules pela UI do Langfuse.
 
 Para validar o setup sem criar nada:
 
