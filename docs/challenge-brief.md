@@ -23,7 +23,7 @@ O sistema usa agentes reais de RH, Financeiro e TI com Agno + Groq e tools locai
 ## Comandos
 
 ```bash
-uv sync --extra full
+uv sync
 ```
 
 Configure `.env` com `GROQ_API_KEY` antes de executar o sistema.
@@ -49,7 +49,7 @@ uv run python -m src.acme_support_ai.cli "Qual é o prazo para pedir reembolso d
 Com Langfuse:
 
 ```bash
-uv sync --extra full
+uv sync
 uv run python -m evals.run_eval --verbose --trace-provider langfuse
 ```
 
@@ -68,7 +68,7 @@ uv run python -m evals.run_eval --trace-provider local
 Modo Langfuse, se o facilitador fornecer chaves:
 
 ```bash
-uv sync --extra full
+uv sync
 uv run python -m evals.run_eval --trace-provider langfuse
 ```
 

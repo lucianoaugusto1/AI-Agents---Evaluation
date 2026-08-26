@@ -25,7 +25,7 @@ O problema: a demo parece boa, mas a evaluation revela riscos classicos de siste
 
 ## Como conduzir
 
-1. Peça para todos rodarem `uv sync --extra full`.
+1. Peça para todos rodarem `uv sync`.
 2. Peça para todos rodarem `uv run python -m evals.run_eval --verbose`.
 3. Se quiser demonstrar produto real, suba a API com `uv run uvicorn src.acme_support_ai.api:app --reload`.
 4. Garanta que `GROQ_API_KEY` esteja configurado antes da execucao.
@@ -50,7 +50,7 @@ uv run python -m evals.run_eval --verbose --trace-provider local
 ```
 
 ```bash
-uv sync --extra full
+uv sync
 uv run python -m evals.run_eval --verbose --trace-provider langfuse
 ```
 
@@ -66,7 +66,7 @@ O projeto usa apenas agentes reais com Groq e tools locais.
 Para demonstrar:
 
 ```bash
-uv sync --extra full
+uv sync
 uv run python -m evals.run_eval --verbose --trace-provider langfuse
 ```
 

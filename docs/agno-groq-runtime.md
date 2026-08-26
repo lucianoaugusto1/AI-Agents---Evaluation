@@ -42,7 +42,7 @@ Algumas tools simulam problemas reais de sistemas corporativos: caches antigos, 
 ## Setup
 
 ```bash
-uv sync --extra agents
+uv sync
 cp .env.example .env
 ```
 
@@ -81,7 +81,7 @@ Esse comando envia todas as perguntas do golden dataset e o contexto ficticio re
 ## Rodar com Langfuse
 
 ```bash
-uv sync --extra full
+uv sync
 uv run python -m evals.run_eval --verbose --trace-provider langfuse
 ```
 

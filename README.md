@@ -76,7 +76,7 @@ Nao basta subir o score por tentativa e erro. A entrega precisa conectar falha, 
 ## Setup com uv
 
 ```bash
-uv sync --extra full
+uv sync
 ```
 
 Copie o arquivo de exemplo e preencha a chave da Groq:
@@ -147,7 +147,7 @@ O projeto usa Agno + Groq como runtime padrao. Ele envia a pergunta e o contexto
 Instale as dependencias:
 
 ```bash
-uv sync --extra agents
+uv sync
 ```
 
 Configure:
@@ -231,7 +231,7 @@ Use esse modo quando todos os participantes tiverem Groq, mas nao tiverem conta 
 Para usar Langfuse no fluxo principal:
 
 ```bash
-uv sync --extra full
+uv sync
 cp .env.example .env
 # preencha LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY e LANGFUSE_BASE_URL
 uv run python -m evals.run_eval --trace-provider langfuse

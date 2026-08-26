@@ -4,22 +4,11 @@ version = "0.1.0"
 description = "Workshop challenge for evaluating and fixing a simulated multi-agent LLM support system."
 requires-python = ">=3.10"
 dependencies = [
+  "agno>=3.0.0",
   "fastapi>=0.116.0",
+  "groq>=0.35.0",
+  "langfuse>=4.14.5",
   "uvicorn[standard]>=0.35.0",
-]
-
-[project.optional-dependencies]
-agents = [
-  "agno>=2.3.0",
-  "groq>=0.35.0",
-]
-observability = [
-  "langfuse>=3.3.1",
-]
-full = [
-  "agno>=2.3.0",
-  "groq>=0.35.0",
-  "langfuse>=3.3.1",
 ]
 
 [dependency-groups]

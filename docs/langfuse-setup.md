@@ -50,7 +50,7 @@ No projeto Langfuse, gere as API keys do ambiente que sera usado no workshop.
 ## 2. Instalar dependencias opcionais
 
 ```bash
-uv sync --extra full
+uv sync
 ```
 
 ## 3. Configurar variaveis de ambiente
@@ -80,7 +80,7 @@ uv run python -m evals.run_eval --verbose --trace-provider langfuse
 Com todas as dependencias opcionais:
 
 ```bash
-uv sync --extra full
+uv sync
 uv run python -m evals.run_eval --verbose --trace-provider langfuse
 ```
 
