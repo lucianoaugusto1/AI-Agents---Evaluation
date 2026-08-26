@@ -1,0 +1,450 @@
+{
+  "config": {
+    "top_k": 2,
+    "strict_context_prompt": false,
+    "generator": "local-extractive",
+    "judge": "local-deterministic"
+  },
+  "averages": {
+    "context_precision": 0.725,
+    "context_recall": 0.9,
+    "faithfulness": 0.9,
+    "answer_relevancy": 0.7235
+  },
+  "cases": [
+    {
+      "id": "refund-001",
+      "question": "Can I get a refund for an annual subscription after 20 days?",
+      "answer": "Annual subscriptions can receive a full refund within 30 days of the initial purchase. Annual subscriptions receive a 20% discount over the monthly price. Customers on monthly plans can request a full refund within 14 days of the initial purchase.",
+      "retrieved": [
+        "refund_policy",
+        "subscription_plans"
+      ],
+      "expected": [
+        "refund_policy"
+      ],
+      "scores": {
+        "context_precision": 0.75,
+        "context_recall": 1.0,
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.8333
+      },
+      "explanations": {
+        "context_precision": "mean(P@1..P@K) = (1.00 + 0.50) / 2",
+        "context_recall": "1/1 expected documents retrieved",
+        "faithfulness": "3/3 claims supported by the retrieved context",
+        "answer_relevancy": "0.5 * coverage + 0.5 * focus"
+      },
+      "details": {
+        "context_precision": [
+          "1. refund_policy            relevant   P@1=1.00",
+          "2. subscription_plans       irrelevant P@2=0.50"
+        ],
+        "context_recall": [
+          "expected: refund_policy",
+          "retrieved: refund_policy, subscription_plans"
+        ],
+        "faithfulness": [
+          "[supported 1.00] Annual subscriptions can receive a full refund within 30 days of the initial purchase.",
+          "[supported 1.00] Annual subscriptions receive a 20% discount over the monthly price.",
+          "[supported 1.00] Customers on monthly plans can request a full refund within 14 days of the initial purchase."
+        ],
+        "answer_relevancy": [
+          "coverage = 0.67 (question keywords found in the answer)",
+          "focus    = 1.00 (3/3 sentences on topic)"
+        ]
+      }
+    },
+    {
+      "id": "refund-002",
+      "question": "How many days do I have to request a refund on an annual subscription, and what discount does the annual subscription give?",
+      "answer": "Annual subscriptions can receive a full refund within 30 days of the initial purchase. Customers on monthly plans can request a full refund within 14 days of the initial purchase. Yes, the annual subscription has a discount, and the exact discount percentage is listed on the plans page.",
+      "retrieved": [
+        "pricing_faq",
+        "refund_policy"
+      ],
+      "expected": [
+        "subscription_plans",
+        "refund_policy"
+      ],
+      "scores": {
+        "context_precision": 0.25,
+        "context_recall": 0.5,
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.875
+      },
+      "explanations": {
+        "context_precision": "mean(P@1..P@K) = (0.00 + 0.50) / 2",
+        "context_recall": "1/2 expected documents retrieved",
+        "faithfulness": "3/3 claims supported by the retrieved context",
+        "answer_relevancy": "0.5 * coverage + 0.5 * focus"
+      },
+      "details": {
+        "context_precision": [
+          "1. pricing_faq              irrelevant P@1=0.00",
+          "2. refund_policy            relevant   P@2=0.50"
+        ],
+        "context_recall": [
+          "expected: subscription_plans, refund_policy",
+          "retrieved: pricing_faq, refund_policy",
+          "MISSING: subscription_plans"
+        ],
+        "faithfulness": [
+          "[supported 1.00] Annual subscriptions can receive a full refund within 30 days of the initial purchase.",
+          "[supported 1.00] Customers on monthly plans can request a full refund within 14 days of the initial purchase.",
+          "[supported 1.00] Yes, the annual subscription has a discount, and the exact discount percentage is listed on the plans page."
+        ],
+        "answer_relevancy": [
+          "coverage = 0.75 (question keywords found in the answer)",
+          "focus    = 1.00 (3/3 sentences on topic)"
+        ]
+      }
+    },
+    {
+      "id": "security-001",
+      "question": "After five failed login attempts what happens to my account, and what does the new password need to contain?",
+      "answer": "After five failed login attempts the account is locked for 30 minutes. Failed login attempts from a new device trigger a confirmation email. A locked account can be unlocked earlier by completing a password reset.",
+      "retrieved": [
+        "account_security",
+        "login_troubleshooting"
+      ],
+      "expected": [
+        "account_security",
+        "password_reset"
+      ],
+      "scores": {
+        "context_precision": 0.75,
+        "context_recall": 0.5,
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.697
+      },
+      "explanations": {
+        "context_precision": "mean(P@1..P@K) = (1.00 + 0.50) / 2",
+        "context_recall": "1/2 expected documents retrieved",
+        "faithfulness": "3/3 claims supported by the retrieved context",
+        "answer_relevancy": "0.5 * coverage + 0.5 * focus"
+      },
+      "details": {
+        "context_precision": [
+          "1. account_security         relevant   P@1=1.00",
+          "2. login_troubleshooting    irrelevant P@2=0.50"
+        ],
+        "context_recall": [
+          "expected: account_security, password_reset",
+          "retrieved: account_security, login_troubleshooting",
+          "MISSING: password_reset"
+        ],
+        "faithfulness": [
+          "[supported 1.00] After five failed login attempts the account is locked for 30 minutes.",
+          "[supported 1.00] Failed login attempts from a new device trigger a confirmation email.",
+          "[supported 1.00] A locked account can be unlocked earlier by completing a password reset."
+        ],
+        "answer_relevancy": [
+          "coverage = 0.73 (question keywords found in the answer)",
+          "focus    = 0.67 (2/3 sentences on topic)"
+        ]
+      }
+    },
+    {
+      "id": "security-002",
+      "question": "Is two-factor authentication mandatory on the Enterprise plan?",
+      "answer": "Two-factor authentication (2FA) is optional on the Monthly plan and mandatory on the Enterprise plan. The Enterprise plan includes a dedicated account manager and a custom contract. Enterprise pricing is negotiated per customer.",
+      "retrieved": [
+        "account_security",
+        "subscription_plans"
+      ],
+      "expected": [
+        "account_security"
+      ],
+      "scores": {
+        "context_precision": 0.75,
+        "context_recall": 1.0,
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.8333
+      },
+      "explanations": {
+        "context_precision": "mean(P@1..P@K) = (1.00 + 0.50) / 2",
+        "context_recall": "1/1 expected documents retrieved",
+        "faithfulness": "3/3 claims supported by the retrieved context",
+        "answer_relevancy": "0.5 * coverage + 0.5 * focus"
+      },
+      "details": {
+        "context_precision": [
+          "1. account_security         relevant   P@1=1.00",
+          "2. subscription_plans       irrelevant P@2=0.50"
+        ],
+        "context_recall": [
+          "expected: account_security",
+          "retrieved: account_security, subscription_plans"
+        ],
+        "faithfulness": [
+          "[supported 1.00] Two-factor authentication (2FA) is optional on the Monthly plan and mandatory on the Enterprise plan.",
+          "[supported 1.00] The Enterprise plan includes a dedicated account manager and a custom contract.",
+          "[supported 1.00] Enterprise pricing is negotiated per customer."
+        ],
+        "answer_relevancy": [
+          "coverage = 1.00 (question keywords found in the answer)",
+          "focus    = 0.67 (2/3 sentences on topic)"
+        ]
+      }
+    },
+    {
+      "id": "billing-001",
+      "question": "Where do I download my invoices as PDF?",
+      "answer": "Invoices can be downloaded as PDF from the billing section of the dashboard. Invoices are generated on the first day of each billing cycle. A locked account can be unlocked earlier by completing a password reset.",
+      "retrieved": [
+        "billing_invoices",
+        "account_security"
+      ],
+      "expected": [
+        "billing_invoices"
+      ],
+      "scores": {
+        "context_precision": 0.75,
+        "context_recall": 1.0,
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.6667
+      },
+      "explanations": {
+        "context_precision": "mean(P@1..P@K) = (1.00 + 0.50) / 2",
+        "context_recall": "1/1 expected documents retrieved",
+        "faithfulness": "3/3 claims supported by the retrieved context",
+        "answer_relevancy": "0.5 * coverage + 0.5 * focus"
+      },
+      "details": {
+        "context_precision": [
+          "1. billing_invoices         relevant   P@1=1.00",
+          "2. account_security         irrelevant P@2=0.50"
+        ],
+        "context_recall": [
+          "expected: billing_invoices",
+          "retrieved: billing_invoices, account_security"
+        ],
+        "faithfulness": [
+          "[supported 1.00] Invoices can be downloaded as PDF from the billing section of the dashboard.",
+          "[supported 1.00] Invoices are generated on the first day of each billing cycle.",
+          "[supported 1.00] A locked account can be unlocked earlier by completing a password reset."
+        ],
+        "answer_relevancy": [
+          "coverage = 0.67 (question keywords found in the answer)",
+          "focus    = 0.67 (2/3 sentences on topic)"
+        ]
+      }
+    },
+    {
+      "id": "ratelimit-001",
+      "question": "What is the API rate limit for the Pro plan?",
+      "answer": "The Pro plan allows 600 API requests per minute. The Enterprise plan allows 6000 API requests per minute. The Monthly plan allows 60 API requests per minute.",
+      "retrieved": [
+        "api_rate_limits",
+        "subscription_plans"
+      ],
+      "expected": [
+        "api_rate_limits"
+      ],
+      "scores": {
+        "context_precision": 0.75,
+        "context_recall": 1.0,
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.8
+      },
+      "explanations": {
+        "context_precision": "mean(P@1..P@K) = (1.00 + 0.50) / 2",
+        "context_recall": "1/1 expected documents retrieved",
+        "faithfulness": "3/3 claims supported by the retrieved context",
+        "answer_relevancy": "0.5 * coverage + 0.5 * focus"
+      },
+      "details": {
+        "context_precision": [
+          "1. api_rate_limits          relevant   P@1=1.00",
+          "2. subscription_plans       irrelevant P@2=0.50"
+        ],
+        "context_recall": [
+          "expected: api_rate_limits",
+          "retrieved: api_rate_limits, subscription_plans"
+        ],
+        "faithfulness": [
+          "[supported 1.00] The Pro plan allows 600 API requests per minute.",
+          "[supported 1.00] The Enterprise plan allows 6000 API requests per minute.",
+          "[supported 1.00] The Monthly plan allows 60 API requests per minute."
+        ],
+        "answer_relevancy": [
+          "coverage = 0.60 (question keywords found in the answer)",
+          "focus    = 1.00 (3/3 sentences on topic)"
+        ]
+      }
+    },
+    {
+      "id": "retention-001",
+      "question": "How long is customer data kept after an account is cancelled?",
+      "answer": "Customer data is deleted 30 days after an account is cancelled. After five failed login attempts the account is locked for 30 minutes. A locked account can be unlocked earlier by completing a password reset.",
+      "retrieved": [
+        "data_retention",
+        "account_security"
+      ],
+      "expected": [
+        "data_retention"
+      ],
+      "scores": {
+        "context_precision": 0.75,
+        "context_recall": 1.0,
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.75
+      },
+      "explanations": {
+        "context_precision": "mean(P@1..P@K) = (1.00 + 0.50) / 2",
+        "context_recall": "1/1 expected documents retrieved",
+        "faithfulness": "3/3 claims supported by the retrieved context",
+        "answer_relevancy": "0.5 * coverage + 0.5 * focus"
+      },
+      "details": {
+        "context_precision": [
+          "1. data_retention           relevant   P@1=1.00",
+          "2. account_security         irrelevant P@2=0.50"
+        ],
+        "context_recall": [
+          "expected: data_retention",
+          "retrieved: data_retention, account_security"
+        ],
+        "faithfulness": [
+          "[supported 1.00] Customer data is deleted 30 days after an account is cancelled.",
+          "[supported 1.00] After five failed login attempts the account is locked for 30 minutes.",
+          "[supported 1.00] A locked account can be unlocked earlier by completing a password reset."
+        ],
+        "answer_relevancy": [
+          "coverage = 0.83 (question keywords found in the answer)",
+          "focus    = 0.67 (2/3 sentences on topic)"
+        ]
+      }
+    },
+    {
+      "id": "onboarding-001",
+      "question": "When does a new employee get access to internal systems?",
+      "answer": "Access to internal systems is granted by the IT team within 48 hours. Every new employee must complete the security training in the first week. New employees receive their laptop on the first day.",
+      "retrieved": [
+        "employee_onboarding",
+        "password_reset"
+      ],
+      "expected": [
+        "employee_onboarding"
+      ],
+      "scores": {
+        "context_precision": 0.75,
+        "context_recall": 1.0,
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.8333
+      },
+      "explanations": {
+        "context_precision": "mean(P@1..P@K) = (1.00 + 0.50) / 2",
+        "context_recall": "1/1 expected documents retrieved",
+        "faithfulness": "3/3 claims supported by the retrieved context",
+        "answer_relevancy": "0.5 * coverage + 0.5 * focus"
+      },
+      "details": {
+        "context_precision": [
+          "1. employee_onboarding      relevant   P@1=1.00",
+          "2. password_reset           irrelevant P@2=0.50"
+        ],
+        "context_recall": [
+          "expected: employee_onboarding",
+          "retrieved: employee_onboarding, password_reset"
+        ],
+        "faithfulness": [
+          "[supported 1.00] Access to internal systems is granted by the IT team within 48 hours.",
+          "[supported 1.00] Every new employee must complete the security training in the first week.",
+          "[supported 1.00] New employees receive their laptop on the first day."
+        ],
+        "answer_relevancy": [
+          "coverage = 1.00 (question keywords found in the answer)",
+          "focus    = 0.67 (2/3 sentences on topic)"
+        ]
+      }
+    },
+    {
+      "id": "password-001",
+      "question": "How long is the password reset link valid?",
+      "answer": "A locked account can be unlocked earlier by completing a password reset. A reset link is sent by email and expires after 60 minutes. Users can reset their password from the login screen by clicking \"Forgot password\".",
+      "retrieved": [
+        "password_reset",
+        "account_security"
+      ],
+      "expected": [
+        "password_reset"
+      ],
+      "scores": {
+        "context_precision": 0.75,
+        "context_recall": 1.0,
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.875
+      },
+      "explanations": {
+        "context_precision": "mean(P@1..P@K) = (1.00 + 0.50) / 2",
+        "context_recall": "1/1 expected documents retrieved",
+        "faithfulness": "3/3 claims supported by the retrieved context",
+        "answer_relevancy": "0.5 * coverage + 0.5 * focus"
+      },
+      "details": {
+        "context_precision": [
+          "1. password_reset           relevant   P@1=1.00",
+          "2. account_security         irrelevant P@2=0.50"
+        ],
+        "context_recall": [
+          "expected: password_reset",
+          "retrieved: password_reset, account_security"
+        ],
+        "faithfulness": [
+          "[supported 1.00] A locked account can be unlocked earlier by completing a password reset.",
+          "[supported 1.00] A reset link is sent by email and expires after 60 minutes.",
+          "[supported 1.00] Users can reset their password from the login screen by clicking \"Forgot password\"."
+        ],
+        "answer_relevancy": [
+          "coverage = 0.75 (question keywords found in the answer)",
+          "focus    = 1.00 (3/3 sentences on topic)"
+        ]
+      }
+    },
+    {
+      "id": "hallucination-001",
+      "question": "Does the company offer a lifetime license with unlimited API calls?",
+      "answer": "Yes, that is available. Our plans can be customised on request and unlimited usage is granted to customers who ask for it.",
+      "retrieved": [
+        "api_rate_limits",
+        "subscription_plans"
+      ],
+      "expected": [
+        "subscription_plans",
+        "api_rate_limits"
+      ],
+      "scores": {
+        "context_precision": 1.0,
+        "context_recall": 1.0,
+        "faithfulness": 0.0,
+        "answer_relevancy": 0.0714
+      },
+      "explanations": {
+        "context_precision": "mean(P@1..P@K) = (1.00 + 1.00) / 2",
+        "context_recall": "2/2 expected documents retrieved",
+        "faithfulness": "0/2 claims supported by the retrieved context | unsupported: \"Yes, that is available.\"",
+        "answer_relevancy": "0.5 * coverage + 0.5 * focus"
+      },
+      "details": {
+        "context_precision": [
+          "1. api_rate_limits          relevant   P@1=1.00",
+          "2. subscription_plans       relevant   P@2=1.00"
+        ],
+        "context_recall": [
+          "expected: subscription_plans, api_rate_limits",
+          "retrieved: api_rate_limits, subscription_plans"
+        ],
+        "faithfulness": [
+          "[UNSUPPORTED 0.00] Yes, that is available.",
+          "[UNSUPPORTED 0.10] Our plans can be customised on request and unlimited usage is granted to customers who ask for it."
+        ],
+        "answer_relevancy": [
+          "coverage = 0.14 (question keywords found in the answer)",
+          "focus    = 0.00 (0/2 sentences on topic)"
+        ]
+      }
+    }
+  ]
+}

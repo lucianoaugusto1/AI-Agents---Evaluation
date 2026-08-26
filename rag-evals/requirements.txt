@@ -1,0 +1,9 @@
+# Core (workshop runs fully offline with just these)
+pyyaml>=6.0
+rich>=13.0
+python-dotenv>=1.0
+pytest>=8.0
+
+# Optional: only needed for LLM-as-a-Judge / LLM generation mode.
+# Install it if you have an OPENAI_API_KEY. Everything works without it.
+openai>=1.30 ; python_version >= "3.9"
