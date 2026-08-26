@@ -86,7 +86,7 @@ def answer_with_agno(question: str) -> str:
         from agno.team.team import TeamMode
     except ImportError as exc:
         raise RuntimeError(
-            "Agno runtime is not installed. Run `uv sync --extra agents` "
+            "Agno or Groq runtime dependencies are not installed. Run `uv sync` "
             "before using the API, CLI, or evaluations."
         ) from exc
 

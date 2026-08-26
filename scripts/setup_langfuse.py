@@ -69,7 +69,7 @@ def create_langfuse_client():
 
 def create_langfuse_api():
     load_env_file()
-    from langfuse import LangfuseAPI
+    from langfuse.api.client import LangfuseAPI
 
     public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
     secret_key = os.getenv("LANGFUSE_SECRET_KEY")
@@ -78,7 +78,7 @@ def create_langfuse_api():
         raise RuntimeError("LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY are required.")
 
     return LangfuseAPI(
-        base_url=f"{base_url}/api/public",
+        base_url=base_url,
         x_langfuse_sdk_name="acme-agents-eval-challenge",
         x_langfuse_sdk_version="0.1.0",
         x_langfuse_public_key=public_key,
@@ -121,7 +121,7 @@ def ensure_dataset(dataset_name: str, dry_run: bool) -> None:
     client.flush()
 
 
-def create_code_evaluators(dry_run: bool, force_new_version: bool) -> None:
+def create_code_evaluators(dry_run: bool, force_new_version: bool) -> bool:
     sources = {
         name: (EVALUATORS_DIR / file_name).read_text(encoding="utf-8")
         for name, file_name in EVALUATOR_FILES.items()
@@ -130,7 +130,7 @@ def create_code_evaluators(dry_run: bool, force_new_version: bool) -> None:
     if dry_run:
         for name, source in sources.items():
             print(f"[dry-run] evaluator={name} chars={len(source)}")
-        return
+        return True
 
     from langfuse.api.unstable.commons.types.code_evaluator_source_code_language import (
         CodeEvaluatorSourceCodeLanguage,
@@ -140,6 +140,7 @@ def create_code_evaluators(dry_run: bool, force_new_version: bool) -> None:
     )
 
     api = create_langfuse_api()
+    ok = True
     existing_names = set()
     try:
         existing = api.unstable.evaluators.list(limit=100)
@@ -164,6 +165,8 @@ def create_code_evaluators(dry_run: bool, force_new_version: bool) -> None:
         except Exception as exc:
             print(f"could not create evaluator: {name} ({exc})")
             print(f"source file available at: {EVALUATORS_DIR / EVALUATOR_FILES[name]}")
+            ok = False
+    return ok
 
 
 def main() -> None:
@@ -178,10 +181,12 @@ def main() -> None:
     if not args.skip_dataset:
         ensure_dataset(args.dataset_name, dry_run=args.dry_run)
     if not args.skip_evaluators:
-        create_code_evaluators(
+        ok = create_code_evaluators(
             dry_run=args.dry_run,
             force_new_version=args.force_evaluator_version,
         )
+        if not ok:
+            raise SystemExit(1)
 
 
 if __name__ == "__main__":
