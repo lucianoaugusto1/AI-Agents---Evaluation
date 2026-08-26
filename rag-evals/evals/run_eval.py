@@ -11,8 +11,8 @@ import json
 from pathlib import Path
 from statistics import mean
 
-from src.rag_evals import RagResult, answer_question
-from src.rag_evals import config
+from acme_cloud_rag import RagResult, answer_question
+from acme_cloud_rag import config
 
 from .judge import CaseResult, judge_case
 from .observability import create_observer

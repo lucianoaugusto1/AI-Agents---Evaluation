@@ -6,10 +6,9 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import _bootstrap  # noqa: F401,E402
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.rag_evals import answer_question  # noqa: E402
+from acme_cloud_rag import answer_question  # noqa: E402
 
 
 def main() -> None:

@@ -13,10 +13,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import _bootstrap  # noqa: F401,E402
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.rag_evals.llm import load_env_file  # noqa: E402
+from acme_cloud_rag.llm import load_env_file  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 DATASET_PATH = ROOT / "evals" / "golden_dataset.jsonl"

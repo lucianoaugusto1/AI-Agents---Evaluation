@@ -6,8 +6,7 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import _bootstrap  # noqa: F401,E402
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from evals.run_eval import main  # noqa: E402
 

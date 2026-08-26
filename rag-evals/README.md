@@ -26,11 +26,12 @@ pergunta -> chunking -> indice BM25 -> top-k chunks -> contexto -> Groq -> JSON
 ```text
 rag-evals/
 ├── data/documents/*.md          base de conhecimento da ACME Cloud
-├── src/rag_evals/config.py      os parametros que o desafio pede para ajustar
-├── src/rag_evals/documents.py   carga do corpus e chunking
-├── src/rag_evals/retriever.py   BM25 puro, sem servico externo
-├── src/rag_evals/prompts.py     prompts do gerador
-├── src/rag_evals/pipeline.py    recuperacao -> contexto -> geracao
+├── acme_cloud_rag/config.py     os parametros que o desafio pede para ajustar
+├── acme_cloud_rag/documents.py  carga do corpus e chunking
+├── acme_cloud_rag/retriever.py  BM25 puro, sem servico externo
+├── acme_cloud_rag/prompts.py    prompts do gerador
+├── acme_cloud_rag/pipeline.py   recuperacao -> contexto -> geracao
+├── acme_cloud_rag/llm.py        cliente Groq
 ├── evals/golden_dataset.jsonl   16 casos rotulados
 ├── evals/metrics.py             context precision e recall (deterministicos)
 ├── evals/judge.py               LLM-as-a-Judge + contrato de saida
@@ -114,11 +115,11 @@ Subir o score sem editar o dataset nem o avaliador.
 
 Pode alterar:
 
-- `src/rag_evals/config.py`
-- `src/rag_evals/documents.py`
-- `src/rag_evals/retriever.py`
-- `src/rag_evals/prompts.py`
-- `src/rag_evals/pipeline.py`
+- `acme_cloud_rag/config.py`
+- `acme_cloud_rag/documents.py`
+- `acme_cloud_rag/retriever.py`
+- `acme_cloud_rag/prompts.py`
+- `acme_cloud_rag/pipeline.py`
 
 Nao pode alterar:
 

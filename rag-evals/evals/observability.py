@@ -12,8 +12,8 @@ import time
 from pathlib import Path
 from typing import Any, Protocol
 
-from src.rag_evals import RagResult
-from src.rag_evals.llm import load_env_file
+from acme_cloud_rag import RagResult
+from acme_cloud_rag.llm import load_env_file
 
 from .judge import CaseResult
 

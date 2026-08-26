@@ -11,7 +11,7 @@ quando nao encontra contexto.
 
 ## Bugs plantados
 
-Configuracao (`src/rag_evals/config.py`):
+Configuracao (`acme_cloud_rag/config.py`):
 
 - `CHUNK_SIZE = 320` com `CHUNK_OVERLAP = 0`: corte de tamanho fixo, sem
   respeitar paragrafo, titulo ou linha de tabela. Um trecho relevante pode

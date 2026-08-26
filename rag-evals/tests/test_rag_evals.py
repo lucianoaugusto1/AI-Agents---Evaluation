@@ -11,8 +11,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from evals.metrics import context_precision, context_recall  # noqa: E402
-from src.rag_evals.documents import build_chunks, load_documents, split_text  # noqa: E402
-from src.rag_evals.retriever import BM25Index, tokenize  # noqa: E402
+from acme_cloud_rag.documents import build_chunks, load_documents, split_text  # noqa: E402
+from acme_cloud_rag.retriever import BM25Index, tokenize  # noqa: E402
 
 DATASET = ROOT / "evals" / "golden_dataset.jsonl"
 REQUIRED_CASE_FIELDS = {
@@ -111,8 +111,8 @@ class JudgeTests(unittest.TestCase):
         self.judge.complete_json = self._original
 
     def _rag(self, raw: str, question: str = "Qual e o prazo de reembolso?"):
-        from src.rag_evals.pipeline import RagResult, _parse, build_context
-        from src.rag_evals.retriever import retrieve
+        from acme_cloud_rag.pipeline import RagResult, _parse, build_context
+        from acme_cloud_rag.retriever import retrieve
 
         chunks = retrieve(question)
         return RagResult(

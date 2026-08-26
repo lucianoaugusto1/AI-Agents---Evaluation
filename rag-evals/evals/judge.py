@@ -19,9 +19,9 @@ import unicodedata
 from dataclasses import dataclass, field
 from typing import Any
 
-from src.rag_evals import RagResult
-from src.rag_evals.config import judge_model
-from src.rag_evals.llm import complete_json
+from acme_cloud_rag import RagResult
+from acme_cloud_rag.config import judge_model
+from acme_cloud_rag.llm import complete_json
 
 from .metrics import context_precision, context_recall
 
