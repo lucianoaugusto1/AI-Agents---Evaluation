@@ -6,6 +6,26 @@ A ACME Corp, empresa ficticia usada no exercicio, tem um assistente interno com 
 
 O desafio dos participantes e usar Evaluation para diagnosticar esses problemas, corrigir o sistema e demonstrar melhoria com metricas.
 
+## As duas atividades do workshop
+
+Este repositorio tem dois desafios de Evaluation, com a mesma logica e
+sistemas diferentes:
+
+| | Raiz do repositorio | `rag-evals/` |
+| --- | --- | --- |
+| Sistema | agentes Agno + Groq com tools | RAG sobre base de documentos |
+| Falhas plantadas | prompt, roteamento, tools desatualizadas | chunking, indice, contexto, prompt |
+| Metricas | relevance, faithfulness, format, safety | context precision/recall, faithfulness, answer relevancy, format |
+| Observabilidade | Langfuse (dataset + code evaluators) | Langfuse (traces com spans de retrieve e generate) |
+
+Os dois usam o mesmo `uv sync`, o mesmo `.env` e a mesma meta de score
+(`0.85+`). O desafio de RAG esta documentado em `rag-evals/README.md` e o guia
+do facilitador correspondente em `rag-evals/docs/guia-do-facilitador.md`.
+
+```bash
+uv run python rag-evals/scripts/run_eval.py --verbose
+```
+
 ## Contexto do produto
 
 O assistente responde perguntas internas de colaboradores sobre:
