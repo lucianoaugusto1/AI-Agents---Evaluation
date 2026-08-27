@@ -43,9 +43,15 @@ MAX_RATE_LIMIT_RETRIES = 6
 RATE_LIMIT_BASE_DELAY = 0.5
 RATE_LIMIT_MAX_DELAY = 30.0
 
+# Teto de espera acumulada por execucao, em segundos. Sem ele uma unica chamada
+# pode dormir MAX_RATE_LIMIT_RETRIES * RATE_LIMIT_MAX_DELAY, e a suite inteira
+# rasteja em silencio por muitos minutos quando a cota esta saturada. Falhar
+# rapido com uma mensagem clara e melhor que um terminal parado sem explicacao.
+RATE_LIMIT_TOTAL_WAIT_BUDGET = float(os.getenv("RAG_RATE_LIMIT_BUDGET", "120"))
+
 # Estatisticas de rate limit da execucao. Ligue RAG_DEBUG_RATE_LIMIT=1 para ver
 # quanto da run foi espera, e nao trabalho.
-STATS = {"calls": 0, "retries": 0, "wait_seconds": 0.0}
+STATS = {"calls": 0, "retries": 0, "wait_seconds": 0.0, "warned": False}
 
 
 class RateLimitExhausted(RuntimeError):
@@ -55,6 +61,48 @@ class RateLimitExhausted(RuntimeError):
     pontuar zero e a suite reportar uma nota que nao mede o RAG, e sim a cota
     do provedor.
     """
+
+
+def _warn_rate_limit(model: str, delay: float) -> None:
+    """Avisa que a pausa e cota do provedor, nao lentidao do RAG.
+
+    Sem isso o participante ve o terminal parado e nao tem como saber que o
+    problema esta do lado da Groq.
+    """
+    if not STATS["warned"]:
+        STATS["warned"] = True
+        print(
+            f"\n[rate limit] A Groq recusou uma chamada no modelo {model} por "
+            "limite de tokens por minuto.\n"
+            "[rate limit] Isso e cota do provedor, nao lentidao do RAG. "
+            "A execucao continua, esperando e repetindo.\n",
+            file=sys.stderr,
+            flush=True,
+        )
+    print(
+        f"[rate limit] esperando {delay:.1f}s "
+        f"(acumulado {STATS['wait_seconds'] + delay:.0f}s de "
+        f"{RATE_LIMIT_TOTAL_WAIT_BUDGET:.0f}s)",
+        file=sys.stderr,
+        flush=True,
+    )
+
+
+def _rate_limit_help(model: str, error: Exception) -> str:
+    return (
+        f"RATE LIMIT DA GROQ - a execucao parou por cota, nao por erro do RAG.\n\n"
+        f"Esperei {STATS['wait_seconds']:.0f}s no total e as chamadas continuam "
+        f"sendo recusadas no modelo {model}.\n\n"
+        "O limite e por organizacao e por modelo (tokens por minuto), entao gerar "
+        "uma chave nova na mesma conta nao ajuda: a cota e a mesma.\n\n"
+        "O que fazer:\n"
+        "  - Espere alguns minutos sem rodar nada e tente de novo.\n"
+        "  - Itere com --case CASO em vez da suite completa.\n"
+        "  - Use um JUDGE_MODEL diferente do GROQ_MODEL: a cota e por modelo, "
+        "entao juiz e gerador separados dividem o consumo em dois buckets.\n"
+        "  - Para esperar mais antes de desistir: RAG_RATE_LIMIT_BUDGET=300\n\n"
+        f"Mensagem do provedor: {error}"
+    )
 
 
 def _is_rate_limit(error: Exception) -> bool:
@@ -147,13 +195,16 @@ def complete(
             except Exception as error:
                 if not _is_rate_limit(error):
                     raise
-                if attempt == MAX_RATE_LIMIT_RETRIES:
-                    raise RateLimitExhausted(
-                        f"Rate limit da Groq depois de {MAX_RATE_LIMIT_RETRIES} "
-                        f"repeticoes no modelo {model}.\n"
-                        f"Mensagem do provedor: {error}"
-                    ) from error
                 delay = _retry_delay(error, attempt)
+                exhausted = attempt == MAX_RATE_LIMIT_RETRIES
+                over_budget = (
+                    STATS["wait_seconds"] + delay > RATE_LIMIT_TOTAL_WAIT_BUDGET
+                )
+                if exhausted or over_budget:
+                    raise RateLimitExhausted(
+                        _rate_limit_help(model, error)
+                    ) from error
+                _warn_rate_limit(model, delay)
                 STATS["retries"] += 1
                 STATS["wait_seconds"] += delay
                 time.sleep(delay)
