@@ -7,6 +7,7 @@ dois chunks e nenhum dos dois responder a pergunta sozinho.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -30,18 +31,62 @@ class Chunk:
     is_obsolete: bool
 
 
+# Linhas de metadado do cabecalho, que descrevem o documento em vez de
+# responder qualquer pergunta.
+_METADATA_LINE = re.compile(r"^(versao|status)\s*:", re.IGNORECASE)
+
+# Parentese final do titulo, onde mora o "(versao 2023 - OBSOLETA)" e o
+# "(vigente desde 01/2025)".
+_TITLE_QUALIFIER = re.compile(r"\s*\([^)]*\)\s*$")
+
+
+def parse_document(raw: str) -> tuple[str, str, bool]:
+    """Separa metadado de conteudo.
+
+    O estado do documento (versao, vigencia) e metadado do indice, nao resposta
+    ao usuario. Deixa-lo no corpo faz o modelo ler "Status: obsoleta" dentro do
+    contexto e avisar sozinho que a politica esta revogada, o que esconde a
+    falha que a atividade quer mostrar: o RAG entregando politica revogada com
+    cara de vigente. O retriever continua sabendo, via is_obsolete; o gerador
+    nao.
+
+    O qualificador entre parenteses sai do titulo dos dois lados, obsoleto e
+    vigente. Manter so o "(vigente desde 01/2025)" seria a mesma pista, ao
+    contrario.
+    """
+    lines = raw.splitlines()
+    title_line = lines[0] if lines else ""
+    title = title_line.lstrip("# ").strip()
+
+    metadata: list[str] = []
+    index = 1
+    while index < len(lines):
+        stripped = lines[index].strip()
+        if not stripped:
+            index += 1
+            continue
+        if not _METADATA_LINE.match(stripped):
+            break
+        metadata.append(stripped)
+        index += 1
+
+    is_obsolete = "obsolet" in " ".join([title, *metadata]).lower()
+    clean_title = _TITLE_QUALIFIER.sub("", title).strip()
+    content = "\n".join(lines[index:]).strip()
+    body = f"# {clean_title}\n\n{content}" if content else f"# {clean_title}"
+    return clean_title, body, is_obsolete
+
+
 def load_documents(directory: Path | None = None) -> list[Document]:
     documents: list[Document] = []
     for path in sorted((directory or DOCUMENTS_DIR).glob("*.md")):
-        body = path.read_text(encoding="utf-8")
-        title = body.splitlines()[0].lstrip("# ").strip()
-        header = body[:400].lower()
+        title, body, is_obsolete = parse_document(path.read_text(encoding="utf-8"))
         documents.append(
             Document(
                 doc_id=path.stem,
                 title=title,
                 body=body,
-                is_obsolete="obsolet" in header,
+                is_obsolete=is_obsolete,
             )
         )
     return documents
