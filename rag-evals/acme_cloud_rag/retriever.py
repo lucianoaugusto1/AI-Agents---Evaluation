@@ -29,7 +29,7 @@ STOPWORDS = {
     "a", "as", "ao", "aos", "com", "como", "da", "das", "de", "do", "dos", "e",
     "em", "essa", "esse", "eu", "meu", "minha", "na", "nas", "no", "nos", "o",
     "os", "ou", "para", "por", "posso", "qual", "quais", "quando", "quanto",
-    "quantos", "que", "se", "tem", "um", "uma", "voces",
+    "quantas", "quantos", "que", "se", "tem", "um", "uma", "voces",
 }
 
 
