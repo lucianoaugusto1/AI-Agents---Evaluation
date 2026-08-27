@@ -55,13 +55,15 @@ RATE_LIMIT_TOTAL_WAIT_BUDGET = float(os.getenv("RAG_RATE_LIMIT_BUDGET", "120"))
 # ela roda exatamente no teto e satura sozinha depois do primeiro minuto.
 # Frear de proposito e mais barato que ser punido: 1s de pausa preventiva evita
 # 30s de castigo do provedor. Ponha 0 para desligar o freio.
-RATE_LIMIT_TPM_TARGET = float(os.getenv("RAG_TPM_TARGET", "7000"))
+RATE_LIMIT_TPM_TARGET = float(os.getenv("RAG_TPM_TARGET", "7500"))
 
 # Janela de contabilidade do freio, em segundos.
 _TPM_WINDOW = 60.0
 
-# (instante, tokens) das chamadas recentes, para estimar o consumo da janela.
-_RECENT_CALLS: deque = deque()
+# (instante, tokens) das chamadas recentes, por modelo. A cota da Groq e por
+# modelo, entao somar gerador e juiz no mesmo orcamento freia como se o consumo
+# de cada bucket fosse o dobro do real.
+_RECENT_CALLS: dict[str, deque] = {}
 
 # Estatisticas de rate limit da execucao. Ligue RAG_DEBUG_RATE_LIMIT=1 para ver
 # quanto da run foi espera, e nao trabalho.
@@ -71,6 +73,7 @@ STATS = {
     "wait_seconds": 0.0,
     "throttle_seconds": 0.0,
     "tokens": 0,
+    "tokens_by_model": {},
     "warned": False,
 }
 
@@ -85,34 +88,38 @@ def _estimate_tokens(system: str, user: str) -> int:
     return (len(system) + len(user)) // 4 + 512
 
 
-def _throttle(estimated: int) -> None:
-    """Espera antes de chamar, para o consumo caber no alvo de tokens/minuto.
+def _throttle(model: str, estimated: int) -> None:
+    """Espera antes de chamar, para o consumo do modelo caber no alvo.
 
     Sem isso a suite dispara ate o provedor recusar, e cada recusa custa os 30s
-    do retry-after. A pausa preventiva e quase sempre de menos de um segundo.
+    do retry-after. O orcamento e por modelo: gerador e juiz separados tem cada
+    um a sua janela.
     """
     if RATE_LIMIT_TPM_TARGET <= 0:
         return
+    recent = _RECENT_CALLS.setdefault(model, deque())
     while True:
         now = time.monotonic()
-        while _RECENT_CALLS and now - _RECENT_CALLS[0][0] > _TPM_WINDOW:
-            _RECENT_CALLS.popleft()
-        used = sum(tokens for _, tokens in _RECENT_CALLS)
-        if not _RECENT_CALLS or used + estimated <= RATE_LIMIT_TPM_TARGET:
+        while recent and now - recent[0][0] > _TPM_WINDOW:
+            recent.popleft()
+        used = sum(tokens for _, tokens in recent)
+        if not recent or used + estimated <= RATE_LIMIT_TPM_TARGET:
             return
         # Dorme so ate a chamada mais antiga sair da janela e liberar espaco.
-        delay = min(_TPM_WINDOW - (now - _RECENT_CALLS[0][0]) + 0.05, 5.0)
+        delay = min(_TPM_WINDOW - (now - recent[0][0]) + 0.05, 5.0)
         if delay <= 0:
             return
         STATS["throttle_seconds"] += delay
         time.sleep(delay)
 
 
-def _record_usage(response, fallback: int) -> None:
+def _record_usage(model: str, response, fallback: int) -> None:
     usage = getattr(response, "usage", None)
     tokens = getattr(usage, "total_tokens", None) or fallback
     STATS["tokens"] += tokens
-    _RECENT_CALLS.append((time.monotonic(), tokens))
+    by_model = STATS["tokens_by_model"]
+    by_model[model] = by_model.get(model, 0) + tokens
+    _RECENT_CALLS.setdefault(model, deque()).append((time.monotonic(), tokens))
 
 
 class RateLimitExhausted(RuntimeError):
@@ -124,7 +131,8 @@ class RateLimitExhausted(RuntimeError):
     """
 
 
-def _warn_rate_limit(model: str, delay: float, provider_message: str) -> None:
+def _warn_rate_limit(model: str, delay: float, provider_message: str,
+                     _limit_kind_label: str = "minuto") -> None:
     """Avisa que a pausa e cota do provedor, nao lentidao do RAG.
 
     Sem isso o participante ve o terminal parado e nao tem como saber que o
@@ -133,8 +141,8 @@ def _warn_rate_limit(model: str, delay: float, provider_message: str) -> None:
     if not STATS["warned"]:
         STATS["warned"] = True
         print(
-            f"\n[rate limit] A Groq recusou uma chamada no modelo {model} por "
-            "limite de tokens por minuto.\n"
+            f"\n[rate limit] A Groq recusou uma chamada no modelo {model}: "
+            f"limite de tokens por {_limit_kind_label} excedido.\n"
             "[rate limit] Isso e cota do provedor, nao lentidao do RAG. "
             "A execucao continua, esperando e repetindo.\n"
             f"[rate limit] Mensagem do provedor: {provider_message}\n",
@@ -163,6 +171,39 @@ def _rate_limit_help(model: str, error: Exception) -> str:
         "  - Use um JUDGE_MODEL diferente do GROQ_MODEL: a cota e por modelo, "
         "entao juiz e gerador separados dividem o consumo em dois buckets.\n"
         "  - Para esperar mais antes de desistir: RAG_RATE_LIMIT_BUDGET=300\n\n"
+        f"Mensagem do provedor: {error}"
+    )
+
+
+def _limit_kind(error: Exception) -> str:
+    """Distingue o limite por dia do limite por minuto.
+
+    A Groq aplica os dois. Por minuto (TPM) a cota volta em segundos e vale a
+    pena esperar. Por dia (TPD) nao ha o que esperar dentro de uma sessao: o
+    retry-after pede minutos e a cota estoura de novo na chamada seguinte.
+    """
+    message = str(error)
+    if "tokens per day" in message or "(TPD)" in message:
+        return "dia"
+    if "tokens per minute" in message or "(TPM)" in message:
+        return "minuto"
+    return "desconhecido"
+
+
+def _daily_quota_message(model: str, error: Exception) -> str:
+    return (
+        "COTA DIARIA DA GROQ ESGOTADA - nao e erro do RAG nem lentidao.\n\n"
+        f"O modelo {model} atingiu o limite de tokens por dia da organizacao. "
+        "Esperar nao resolve: a cota so volta no reset diario, e uma pausa curta "
+        "seria consumida pela proxima chamada.\n\n"
+        "Orcamento da free tier: 200.000 tokens por dia, e a suite completa "
+        "consome ~25.000. Sao ~8 execucoes completas por dia, por conta.\n\n"
+        "O que fazer:\n"
+        "  - Itere com --case CASO: um caso custa ~1/18 da suite.\n"
+        "  - Guarde a suite completa para os checkpoints.\n"
+        "  - Use um JUDGE_MODEL diferente do GROQ_MODEL: a cota e por modelo, "
+        "entao juiz e gerador separados dobram o orcamento diario disponivel.\n"
+        "  - Ou use outra conta, ou suba de tier.\n\n"
         f"Mensagem do provedor: {error}"
     )
 
@@ -239,10 +280,10 @@ def complete(
         if effort is not None:
             kwargs["reasoning_effort"] = effort
         estimated = _estimate_tokens(system, user)
-        _throttle(estimated)
+        _throttle(model, estimated)
         STATS["calls"] += 1
         response = get_client().chat.completions.create(**kwargs)
-        _record_usage(response, estimated)
+        _record_usage(model, response, estimated)
         return (response.choices[0].message.content or "").strip()
 
     def _rejects_effort(error: Exception) -> bool:
@@ -260,6 +301,10 @@ def complete(
             except Exception as error:
                 if not _is_rate_limit(error):
                     raise
+                if _limit_kind(error) == "dia":
+                    raise RateLimitExhausted(
+                        _daily_quota_message(model, error)
+                    ) from error
                 delay = _retry_delay(error, attempt)
                 exhausted = attempt == MAX_RATE_LIMIT_RETRIES
                 over_budget = (
@@ -269,7 +314,7 @@ def complete(
                     raise RateLimitExhausted(
                         _rate_limit_help(model, error)
                     ) from error
-                _warn_rate_limit(model, delay, str(error))
+                _warn_rate_limit(model, delay, str(error), _limit_kind(error))
                 STATS["retries"] += 1
                 STATS["wait_seconds"] += delay
                 time.sleep(delay)
@@ -318,6 +363,10 @@ def _report_stats() -> None:
         f"{STATS['wait_seconds']:.1f}s de castigo do provedor.",
         file=sys.stderr,
     )
+    for model, tokens in sorted(
+        STATS["tokens_by_model"].items(), key=lambda item: -item[1]
+    ):
+        print(f"[rate limit]   {model}: ~{tokens} tokens", file=sys.stderr)
 
 
 atexit.register(_report_stats)
