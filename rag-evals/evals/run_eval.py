@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from statistics import mean
 
@@ -64,7 +65,11 @@ def run(trace_provider: str = "none", only: str | None = None) -> tuple[list[Cas
     observer.start_run({"dataset": str(DATASET), "case_count": len(cases), "config": current_config()})
     results: list[CaseResult] = []
     rag_results: list[RagResult] = []
-    for case in cases:
+    for position, case in enumerate(cases, start=1):
+        # Progresso em stderr: a suite so imprime os resultados no fim, e sem
+        # isso o terminal fica mudo por minutos. Quando o rate limit aparece,
+        # da para ver em que caso ele bateu.
+        print(f"[{position}/{len(cases)}] {case['id']}", file=sys.stderr, flush=True)
         rag = answer_question(case["question"])
         result = judge_case(case, rag)
         observer.log_case(case, result, rag)

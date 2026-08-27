@@ -7,6 +7,7 @@ import json
 import os
 import sys
 import time
+from collections import deque
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -49,9 +50,69 @@ RATE_LIMIT_MAX_DELAY = 30.0
 # rapido com uma mensagem clara e melhor que um terminal parado sem explicacao.
 RATE_LIMIT_TOTAL_WAIT_BUDGET = float(os.getenv("RAG_RATE_LIMIT_BUDGET", "120"))
 
+# Alvo de tokens por minuto que a execucao tenta nao ultrapassar. A free tier
+# da Groq permite 8000, e a suite consome ~1000 por caso a ~7 casos por minuto:
+# ela roda exatamente no teto e satura sozinha depois do primeiro minuto.
+# Frear de proposito e mais barato que ser punido: 1s de pausa preventiva evita
+# 30s de castigo do provedor. Ponha 0 para desligar o freio.
+RATE_LIMIT_TPM_TARGET = float(os.getenv("RAG_TPM_TARGET", "7000"))
+
+# Janela de contabilidade do freio, em segundos.
+_TPM_WINDOW = 60.0
+
+# (instante, tokens) das chamadas recentes, para estimar o consumo da janela.
+_RECENT_CALLS: deque = deque()
+
 # Estatisticas de rate limit da execucao. Ligue RAG_DEBUG_RATE_LIMIT=1 para ver
 # quanto da run foi espera, e nao trabalho.
-STATS = {"calls": 0, "retries": 0, "wait_seconds": 0.0, "warned": False}
+STATS = {
+    "calls": 0,
+    "retries": 0,
+    "wait_seconds": 0.0,
+    "throttle_seconds": 0.0,
+    "tokens": 0,
+    "warned": False,
+}
+
+
+def _estimate_tokens(system: str, user: str) -> int:
+    """Estimativa grosseira do custo da chamada, em tokens.
+
+    ~4 caracteres por token na entrada, mais uma folga para a saida. Serve so
+    para o freio decidir se espera; o consumo real substitui a estimativa
+    assim que a resposta chega.
+    """
+    return (len(system) + len(user)) // 4 + 512
+
+
+def _throttle(estimated: int) -> None:
+    """Espera antes de chamar, para o consumo caber no alvo de tokens/minuto.
+
+    Sem isso a suite dispara ate o provedor recusar, e cada recusa custa os 30s
+    do retry-after. A pausa preventiva e quase sempre de menos de um segundo.
+    """
+    if RATE_LIMIT_TPM_TARGET <= 0:
+        return
+    while True:
+        now = time.monotonic()
+        while _RECENT_CALLS and now - _RECENT_CALLS[0][0] > _TPM_WINDOW:
+            _RECENT_CALLS.popleft()
+        used = sum(tokens for _, tokens in _RECENT_CALLS)
+        if not _RECENT_CALLS or used + estimated <= RATE_LIMIT_TPM_TARGET:
+            return
+        # Dorme so ate a chamada mais antiga sair da janela e liberar espaco.
+        delay = min(_TPM_WINDOW - (now - _RECENT_CALLS[0][0]) + 0.05, 5.0)
+        if delay <= 0:
+            return
+        STATS["throttle_seconds"] += delay
+        time.sleep(delay)
+
+
+def _record_usage(response, fallback: int) -> None:
+    usage = getattr(response, "usage", None)
+    tokens = getattr(usage, "total_tokens", None) or fallback
+    STATS["tokens"] += tokens
+    _RECENT_CALLS.append((time.monotonic(), tokens))
 
 
 class RateLimitExhausted(RuntimeError):
@@ -63,7 +124,7 @@ class RateLimitExhausted(RuntimeError):
     """
 
 
-def _warn_rate_limit(model: str, delay: float) -> None:
+def _warn_rate_limit(model: str, delay: float, provider_message: str) -> None:
     """Avisa que a pausa e cota do provedor, nao lentidao do RAG.
 
     Sem isso o participante ve o terminal parado e nao tem como saber que o
@@ -75,7 +136,8 @@ def _warn_rate_limit(model: str, delay: float) -> None:
             f"\n[rate limit] A Groq recusou uma chamada no modelo {model} por "
             "limite de tokens por minuto.\n"
             "[rate limit] Isso e cota do provedor, nao lentidao do RAG. "
-            "A execucao continua, esperando e repetindo.\n",
+            "A execucao continua, esperando e repetindo.\n"
+            f"[rate limit] Mensagem do provedor: {provider_message}\n",
             file=sys.stderr,
             flush=True,
         )
@@ -176,8 +238,11 @@ def complete(
             kwargs["response_format"] = {"type": "json_object"}
         if effort is not None:
             kwargs["reasoning_effort"] = effort
+        estimated = _estimate_tokens(system, user)
+        _throttle(estimated)
         STATS["calls"] += 1
         response = get_client().chat.completions.create(**kwargs)
+        _record_usage(response, estimated)
         return (response.choices[0].message.content or "").strip()
 
     def _rejects_effort(error: Exception) -> bool:
@@ -204,7 +269,7 @@ def complete(
                     raise RateLimitExhausted(
                         _rate_limit_help(model, error)
                     ) from error
-                _warn_rate_limit(model, delay)
+                _warn_rate_limit(model, delay, str(error))
                 STATS["retries"] += 1
                 STATS["wait_seconds"] += delay
                 time.sleep(delay)
@@ -247,8 +312,10 @@ def _report_stats() -> None:
     if not STATS["calls"]:
         return
     print(
-        f"[rate limit] {STATS['calls']} chamadas, {STATS['retries']} repeticoes, "
-        f"{STATS['wait_seconds']:.1f}s de espera",
+        f"[rate limit] {STATS['calls']} chamadas, ~{STATS['tokens']} tokens, "
+        f"{STATS['retries']} repeticoes.\n"
+        f"[rate limit] {STATS['throttle_seconds']:.1f}s de freio preventivo, "
+        f"{STATS['wait_seconds']:.1f}s de castigo do provedor.",
         file=sys.stderr,
     )
 
