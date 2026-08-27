@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import atexit
 import json
 import os
+import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,6 +30,53 @@ def load_env_file(path: Path | None = None) -> None:
             key, value = line.split("=", 1)
             os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
         return
+
+
+# Quantas vezes uma chamada recusada por rate limit e repetida antes de
+# desistir. A free tier da Groq limita tokens por minuto, e a suite completa
+# faz tres chamadas por caso do dataset: sem repeticao a run morre no meio.
+MAX_RATE_LIMIT_RETRIES = 6
+
+# Espera minima entre tentativas quando o provedor nao diz quanto esperar.
+# A Groq costuma pedir menos de um segundo, entao comecar em 2s desperdicava
+# tempo de parede: quase toda a espera da suite era backoff excessivo.
+RATE_LIMIT_BASE_DELAY = 0.5
+RATE_LIMIT_MAX_DELAY = 30.0
+
+# Estatisticas de rate limit da execucao. Ligue RAG_DEBUG_RATE_LIMIT=1 para ver
+# quanto da run foi espera, e nao trabalho.
+STATS = {"calls": 0, "retries": 0, "wait_seconds": 0.0}
+
+
+class RateLimitExhausted(RuntimeError):
+    """Rate limit que sobreviveu a todas as repeticoes.
+
+    Vira erro visivel de proposito. Devolver texto vazio aqui faria o juiz
+    pontuar zero e a suite reportar uma nota que nao mede o RAG, e sim a cota
+    do provedor.
+    """
+
+
+def _is_rate_limit(error: Exception) -> bool:
+    if type(error).__name__ == "RateLimitError":
+        return True
+    return getattr(getattr(error, "response", None), "status_code", None) == 429
+
+
+def _retry_delay(error: Exception, attempt: int) -> float:
+    """Quanto esperar antes da proxima tentativa.
+
+    A Groq responde com o header `retry-after` e costuma pedir menos de um
+    segundo. Quando o header nao vem, cai no backoff exponencial.
+    """
+    headers = getattr(getattr(error, "response", None), "headers", None) or {}
+    raw = headers.get("retry-after") or headers.get("Retry-After")
+    if raw:
+        try:
+            return min(max(float(raw), 0.1) + 0.1, RATE_LIMIT_MAX_DELAY)
+        except (TypeError, ValueError):
+            pass
+    return min(RATE_LIMIT_BASE_DELAY * (2 ** attempt), RATE_LIMIT_MAX_DELAY)
 
 
 _CLIENT = None
@@ -58,9 +108,12 @@ def complete(
 ) -> str:
     """Uma chamada de chat completion.
 
-    Modelos com raciocinio longo as vezes estouram o orcamento de tokens antes
-    de fechar o JSON, e a Groq responde 400 com `json_validate_failed`. Quando
-    isso acontece a chamada e repetida com o raciocinio desligado.
+    Trata dois erros esperados do provedor:
+
+    - 429 de rate limit: a chamada e repetida respeitando o `retry-after`.
+    - 400 `json_validate_failed`: modelos com raciocinio longo as vezes estouram
+      o orcamento de tokens antes de fechar o JSON. A chamada e repetida com o
+      raciocinio desligado.
     """
     def _call(effort: str | None) -> str:
         kwargs: dict = {
@@ -75,16 +128,50 @@ def complete(
             kwargs["response_format"] = {"type": "json_object"}
         if effort is not None:
             kwargs["reasoning_effort"] = effort
+        STATS["calls"] += 1
         response = get_client().chat.completions.create(**kwargs)
         return (response.choices[0].message.content or "").strip()
 
+    def _rejects_effort(error: Exception) -> bool:
+        """Alguns modelos nao aceitam `reasoning_effort="none"`.
+
+        Os `openai/gpt-oss-*` respondem 400 exigindo low/medium/high. Sem isso
+        eles nao servem como JUDGE_MODEL, que roda sempre com "none".
+        """
+        return "reasoning_effort" in str(error)
+
+    def _call_with_retry(effort: str | None) -> str:
+        for attempt in range(MAX_RATE_LIMIT_RETRIES + 1):
+            try:
+                return _call(effort)
+            except Exception as error:
+                if not _is_rate_limit(error):
+                    raise
+                if attempt == MAX_RATE_LIMIT_RETRIES:
+                    raise RateLimitExhausted(
+                        f"Rate limit da Groq depois de {MAX_RATE_LIMIT_RETRIES} "
+                        f"repeticoes no modelo {model}.\n"
+                        f"Mensagem do provedor: {error}"
+                    ) from error
+                delay = _retry_delay(error, attempt)
+                STATS["retries"] += 1
+                STATS["wait_seconds"] += delay
+                time.sleep(delay)
+        raise RateLimitExhausted("rate limit sem tentativas restantes")
+
     try:
-        return _call(reasoning_effort)
-    except Exception:
+        return _call_with_retry(reasoning_effort)
+    except RateLimitExhausted:
+        raise
+    except Exception as error:
+        if _rejects_effort(error):
+            return _call_with_retry(None)
         if reasoning_effort == "none":
             raise
         try:
-            return _call("none")
+            return _call_with_retry("none")
+        except RateLimitExhausted:
+            raise
         except Exception:
             return ""
 
@@ -101,3 +188,18 @@ def complete_json(system: str, user: str, model: str) -> dict:
     except json.JSONDecodeError:
         return {}
     return parsed if isinstance(parsed, dict) else {}
+
+
+def _report_stats() -> None:
+    if not os.getenv("RAG_DEBUG_RATE_LIMIT"):
+        return
+    if not STATS["calls"]:
+        return
+    print(
+        f"[rate limit] {STATS['calls']} chamadas, {STATS['retries']} repeticoes, "
+        f"{STATS['wait_seconds']:.1f}s de espera",
+        file=sys.stderr,
+    )
+
+
+atexit.register(_report_stats)
