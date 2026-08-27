@@ -23,6 +23,24 @@ def _normalize(text: str) -> str:
     return re.sub(r"\s+", " ", text.casefold()).strip()
 
 
+def _as_text_list(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        for key in ("value", "text", "name", "id", "doc_id", "claim", "keyword"):
+            if key in value:
+                return _as_text_list(value[key])
+        return [json.dumps(value, ensure_ascii=False, sort_keys=True)]
+    if isinstance(value, list | tuple | set):
+        items: list[str] = []
+        for item in value:
+            items.extend(_as_text_list(item))
+        return items
+    return [str(value)]
+
+
 def parse_response(raw: str) -> tuple[dict[str, Any] | None, list[str]]:
     problems: list[str] = []
     try:
@@ -45,22 +63,25 @@ def judge_case(case: dict[str, Any], response: str) -> CaseResult:
     parsed, format_problems = parse_response(response)
     answer = parsed.get("answer", "") if parsed else response
     citations = parsed.get("citations", []) if parsed and isinstance(parsed.get("citations"), list) else []
+    expected_keywords = _as_text_list(case.get("expected_keywords", []))
+    required_citations = _as_text_list(case.get("required_citations", []))
+    forbidden_claims_expected = _as_text_list(case.get("forbidden_claims", []))
     normalized_answer = _normalize(answer)
     normalized_full = _normalize(response)
     problems: list[str] = []
 
     relevance_hits = [
-        keyword for keyword in case["expected_keywords"]
+        keyword for keyword in expected_keywords
         if _normalize(keyword) in normalized_answer
     ]
-    relevance = len(relevance_hits) / max(1, len(case["expected_keywords"]))
+    relevance = len(relevance_hits) / max(1, len(expected_keywords))
     if relevance < 1:
-        missing = sorted(set(case["expected_keywords"]) - set(relevance_hits))
+        missing = sorted(set(expected_keywords) - set(relevance_hits))
         problems.append("missing expected content: " + ", ".join(missing))
 
-    missing_citations = [doc_id for doc_id in case["required_citations"] if doc_id not in citations]
+    missing_citations = [doc_id for doc_id in required_citations if doc_id not in citations]
     forbidden_claims = [
-        claim for claim in case["forbidden_claims"]
+        claim for claim in forbidden_claims_expected
         if _normalize(claim) in normalized_full
     ]
     faithfulness = 1.0

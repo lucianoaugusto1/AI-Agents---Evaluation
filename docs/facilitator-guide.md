@@ -29,7 +29,7 @@ O problema: a demo parece boa, mas a evaluation revela riscos classicos de siste
 2. Peça para todos rodarem `uv run python -m evals.run_eval --verbose`.
 3. Se quiser demonstrar produto real, suba a API com `uv run uvicorn src.acme_support_ai.api:app --reload`.
 4. Garanta que `GROQ_API_KEY` esteja configurado antes da execucao.
-5. Se houver Langfuse configurado, rode a suite com `--trace-provider langfuse`.
+5. Se houver Langfuse configurado, rode a suite com `--trace-provider langfuse --run-name antes-das-correcoes`.
 6. Dê 5 minutos para leitura dos failures.
 7. Peça para escolherem uma classe de bug por vez.
 8. Incentive alteracoes pequenas e novas execucoes da suite.
@@ -40,7 +40,7 @@ O problema: a demo parece boa, mas a evaluation revela riscos classicos de siste
 Recomendacao pratica:
 
 - Use `--trace-provider local` quando a turma tiver Groq, mas nao tiver credenciais Langfuse.
-- Use Langfuse em uma maquina do facilitador para mostrar traces, scores por caso e comparacao entre runs.
+- Use Langfuse em uma maquina do facilitador para mostrar Dataset Runs, traces, scores por caso e comparacao entre tentativas.
 - Garanta credenciais Groq para cada grupo ou execute a suite em uma maquina compartilhada do facilitador.
 
 Comandos:
@@ -52,7 +52,7 @@ uv run python -m evals.run_eval --verbose --trace-provider local
 ```bash
 uv sync
 uv run python scripts/setup_langfuse.py
-uv run python -m evals.run_eval --verbose --trace-provider langfuse
+uv run python -m evals.run_eval --verbose --trace-provider langfuse --run-name antes-das-correcoes
 ```
 
 Referencias:
@@ -69,7 +69,7 @@ Para demonstrar:
 ```bash
 uv sync
 uv run python scripts/setup_langfuse.py
-uv run python -m evals.run_eval --verbose --trace-provider langfuse
+uv run python -m evals.run_eval --verbose --trace-provider langfuse --run-name depois-das-correcoes
 ```
 
 Use esse modo para mostrar:

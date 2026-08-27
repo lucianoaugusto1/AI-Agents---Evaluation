@@ -200,12 +200,13 @@ def create_code_evaluators(dry_run: bool, force_new_version: bool) -> bool:
     return ok
 
 
-def create_evaluation_rules(dry_run: bool) -> bool:
+def create_evaluation_rules(dry_run: bool, enable_rules: bool) -> bool:
     if dry_run:
         for name, config in EVALUATION_RULES.items():
             print(
                 "[dry-run] evaluation_rule="
-                f"{name} evaluator={config['evaluator']} target={config['target']} enabled=true"
+                f"{name} evaluator={config['evaluator']} target={config['target']} "
+                f"enabled={str(enable_rules).lower()}"
             )
         return True
 
@@ -236,7 +237,7 @@ def create_evaluation_rules(dry_run: bool) -> bool:
                 }
             ],
             "target": config["target"],
-            "enabled": True,
+            "enabled": enable_rules,
             "sampling": 1.0,
         }
 
@@ -252,8 +253,11 @@ def create_evaluation_rules(dry_run: bool) -> bool:
                         timeout=60,
                     )
                     response.raise_for_status()
-                    print(f"updated evaluation rule: {name} ({existing_id})")
+                    state = "enabled" if enable_rules else "disabled"
+                    print(f"updated evaluation rule {state}: {name} ({existing_id})")
                 except httpx.HTTPStatusError as first_exc:
+                    if not enable_rules:
+                        raise
                     disabled_payload = {**update_payload, "enabled": False}
                     response = httpx.patch(
                         f"{base_url}/api/public/unstable/evaluation-rules/{existing_id}",
@@ -275,9 +279,10 @@ def create_evaluation_rules(dry_run: bool) -> bool:
                     )
                     response.raise_for_status()
                     rule_id = response.json().get("id", "<unknown>")
-                    print(f"created evaluation rule: {name} ({rule_id})")
+                    state = "enabled" if enable_rules else "disabled"
+                    print(f"created evaluation rule {state}: {name} ({rule_id})")
                 except httpx.HTTPStatusError as first_exc:
-                    if payload["enabled"] is not True:
+                    if not enable_rules:
                         raise
                     disabled_payload = {**payload, "enabled": False}
                     response = httpx.post(
@@ -305,6 +310,14 @@ def main() -> None:
     parser.add_argument("--skip-dataset", action="store_true")
     parser.add_argument("--skip-evaluators", action="store_true")
     parser.add_argument("--skip-rules", action="store_true")
+    parser.add_argument(
+        "--enable-rules",
+        action="store_true",
+        help=(
+            "Try to enable Langfuse server-side evaluation rules during setup. "
+            "By default they are created disabled because Dataset Runs use SDK evaluators."
+        ),
+    )
     parser.add_argument("--force-evaluator-version", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
@@ -319,7 +332,7 @@ def main() -> None:
         if not ok:
             raise SystemExit(1)
     if not args.skip_rules:
-        ok = create_evaluation_rules(dry_run=args.dry_run)
+        ok = create_evaluation_rules(dry_run=args.dry_run, enable_rules=args.enable_rules)
         if not ok:
             raise SystemExit(1)
 

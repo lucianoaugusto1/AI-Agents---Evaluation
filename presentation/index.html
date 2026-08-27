@@ -130,11 +130,21 @@
       gap: 2rem 3rem;
       margin-top: 2.6rem;
     }
+    .complaints {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.15rem;
+      margin-top: 1.8rem;
+    }
     .panel {
       min-height: 8.6rem;
       padding: 1.4rem 1.5rem;
       border: 1px solid var(--line);
       background: var(--panel);
+    }
+    .complaints .panel {
+      min-height: 7.2rem;
+      padding: 1rem 1.1rem;
     }
     .panel.blue { background: var(--blue-soft); }
     .panel strong {
@@ -148,6 +158,14 @@
       color: var(--muted);
       font-size: clamp(1.02rem, 1.45vw, 1.32rem);
       line-height: 1.24;
+    }
+    .complaints .panel strong {
+      margin-bottom: .55rem;
+      font-size: clamp(1.02rem, 1.45vw, 1.32rem);
+    }
+    .complaints .panel span {
+      font-size: clamp(.82rem, 1.05vw, 1rem);
+      line-height: 1.18;
     }
     .punch {
       color: var(--ink);
@@ -499,23 +517,38 @@
     </section>
 
     <section class="slide">
+      <p class="kicker">Relatos da ACME</p>
+      <h2>A empresa trouxe sintomas. A turma precisa descobrir a causa.</h2>
+      <div class="rule"></div>
+      <div class="complaints">
+        <div class="panel blue"><strong>Reembolso confuso</strong><span>Colaboradores receberam prazos diferentes. Verifique política atual, documento antigo e cálculo de prazo.</span></div>
+        <div class="panel"><strong>Regra financeira antiga</strong><span>Algumas respostas usam limites antigos ou aprovam compra que deveria passar por gestor.</span></div>
+        <div class="panel"><strong>RH fala demais</strong><span>Pedidos sobre salário, perfil ou dados de terceiros podem expor informação sensível.</span></div>
+        <div class="panel"><strong>Formato instável</strong><span>Algumas respostas quebram o JSON esperado pela API e pelos dashboards.</span></div>
+        <div class="panel"><strong>Confiança sem base</strong><span>Quando não acha política clara, o assistente ainda responde como se tivesse certeza.</span></div>
+        <div class="panel blue"><strong>Risco em TI</strong><span>Pedidos maliciosos, senha, MFA, VPN e bypass precisam ser recusados ou escalados.</span></div>
+      </div>
+      <span class="footer">15</span>
+    </section>
+
+    <section class="slide">
       <p class="kicker">Projeto prático</p>
       <h2>Desafio: investigar as queixas da ACME e melhorar os agentes.</h2>
       <div class="rule"></div>
       <div class="three">
-        <div class="panel blue"><strong>Cenário</strong><span>A ACME percebeu respostas estranhas em RH, Financeiro e TI.</span></div>
-        <div class="panel"><strong>O que fazer</strong><span>Rodar a Evaluation, olhar o Langfuse e descobrir a causa.</span></div>
-        <div class="panel"><strong>Entrega</strong><span>Score inicial, problemas, impacto, mudanças feitas e score final.</span></div>
+        <div class="panel blue"><strong>O que fazer</strong><span>Rodar a Evaluation, olhar o Langfuse, descobrir a causa e corrigir agentes, ferramentas ou políticas.</span></div>
+        <div class="panel"><strong>Não pode alterar</strong><span>Golden Dataset, judge, runner, evaluators, setup Langfuse, pyproject ou qualquer regra de score.</span></div>
+        <div class="panel"><strong>Entrega</strong><span>Score inicial, problemas, impacto, mudanças feitas, score final e risco restante.</span></div>
       </div>
-      <p class="punch" style="margin-top: 4rem;">Objetivo: melhorar o sistema sem editar o Golden Dataset.</p>
-      <span class="footer">15</span>
+      <p class="punch" style="margin-top: 4rem;">Objetivo: melhorar o sistema, não mexer na régua.</p>
+      <span class="footer">16</span>
     </section>
 
   </main>
 
   <nav class="controls" aria-label="Controles da apresentação">
     <button id="prev" aria-label="Slide anterior">‹</button>
-    <span class="counter" id="counter">1 / 15</span>
+    <span class="counter" id="counter">1 / 16</span>
     <button id="next" aria-label="Próximo slide">›</button>
   </nav>
 

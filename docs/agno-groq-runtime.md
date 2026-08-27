@@ -83,12 +83,12 @@ Esse comando envia todas as perguntas do golden dataset e o contexto ficticio re
 ```bash
 uv sync
 uv run python scripts/setup_langfuse.py
-uv run python -m evals.run_eval --verbose --trace-provider langfuse
+uv run python -m evals.run_eval --verbose --trace-provider langfuse --run-name tentativa-01
 ```
 
 ## O que observar
 
-Compare os runs antes e depois das alteracoes:
+Compare as Dataset Runs antes e depois das alteracoes:
 
 - score total;
 - faithfulness;

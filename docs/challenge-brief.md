@@ -65,7 +65,7 @@ Com Langfuse:
 ```bash
 uv sync
 uv run python scripts/setup_langfuse.py
-uv run python -m evals.run_eval --verbose --trace-provider langfuse
+uv run python -m evals.run_eval --verbose --trace-provider langfuse --run-name tentativa-01
 ```
 
 O runtime real envia perguntas e contexto ficticio do projeto para Groq.
@@ -85,10 +85,10 @@ Modo Langfuse, se o facilitador fornecer chaves:
 ```bash
 uv sync
 uv run python scripts/setup_langfuse.py
-uv run python -m evals.run_eval --trace-provider langfuse
+uv run python -m evals.run_eval --trace-provider langfuse --run-name tentativa-01
 ```
 
-Leia `docs/langfuse-setup.md` para configurar as credenciais e entender onde o trace aparece.
+Leia `docs/langfuse-setup.md` para configurar as credenciais e entender onde a Dataset Run aparece.
 
 ## Entrega
 

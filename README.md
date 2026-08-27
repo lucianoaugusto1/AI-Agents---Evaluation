@@ -16,7 +16,7 @@ sistemas diferentes:
 | Sistema | agentes Agno + Groq com tools | RAG sobre base de documentos |
 | Falhas plantadas | prompt, roteamento, tools desatualizadas | chunking, indice, contexto, prompt |
 | Metricas | relevance, faithfulness, format, safety | context precision/recall, faithfulness, answer relevancy, format |
-| Observabilidade | Langfuse (dataset + code evaluators) | Langfuse (traces com spans de retrieve e generate) |
+| Observabilidade | Langfuse (Dataset Runs + SDK evaluators) | Langfuse (traces com spans de retrieve e generate) |
 
 Os dois usam o mesmo `uv sync`, o mesmo `.env` e a mesma meta de score
 (`0.85+`). O desafio de RAG esta documentado em `rag-evals/README.md` e o guia
@@ -70,14 +70,25 @@ qualidade melhorou. A regra principal: nao editar o Golden Dataset nem os avalia
 
 ## Queixas da ACME
 
-A empresa reportou alguns sintomas antes de pedir ajuda:
+A empresa reportou alguns sintomas antes de pedir ajuda. Use estes relatos como ponto de
+partida da investigação:
 
-- colaboradores receberam prazos diferentes para reembolso;
-- algumas respostas parecem usar politica antiga;
-- em perguntas sensiveis de RH, o assistente da detalhes demais;
-- algumas respostas quebram o formato esperado pela API;
-- quando nao encontra uma politica clara, o assistente responde com confiança demais;
-- o time de TI suspeita que pedidos maliciosos podem influenciar a resposta.
+- **Prazos de reembolso inconsistentes:** colaboradores receberam respostas diferentes sobre
+  prazo para pedir reembolso. Investigue se o agente esta usando a politica atual, documento
+  antigo ou uma ferramenta de calculo desatualizada.
+- **Regras financeiras antigas:** algumas respostas parecem usar limites antigos de recibo ou
+  aprovar compras que deveriam passar por gestor. Verifique se o sistema confia demais em
+  caches, allowlists ou politicas obsoletas.
+- **RH dando detalhe demais:** em perguntas sobre salario, perfil ou dados de outro colaborador,
+  o assistente parece revelar mais informacao do que deveria. Procure sinais de vazamento de
+  dados pessoais ou falta de escalonamento.
+- **Formato instavel:** algumas respostas nao seguem o contrato esperado pela API. Verifique se
+  o retorno vem em JSON puro, com os campos obrigatorios e tipos corretos.
+- **Excesso de confiança sem contexto:** quando nao encontra uma politica clara, o assistente
+  ainda responde como se tivesse certeza. Investigue se ele deveria dizer que nao encontrou
+  contexto suficiente e escalar.
+- **Risco de seguranca em TI:** o time de TI suspeita que pedidos maliciosos ou fluxos antigos
+  podem influenciar a resposta. Teste casos de prompt injection, senha, MFA, VPN e bypass.
 
 Essas queixas foram traduzidas em comportamento esperado no Golden Dataset. A Evaluation mede
 se o sistema esta respeitando esse comportamento.
@@ -92,11 +103,19 @@ Arquivos que podem ser alterados durante o desafio:
 
 O prompt dos agentes fica em `src/acme_support_ai/agno_runtime.py` nas listas `FINANCE_PROMPT`, `HR_PROMPT`, `IT_PROMPT` e `SHARED_INSTRUCTIONS`. Ele foi deixado aberto para alterações e adições durante o exercício.
 
-Arquivos que representam a suite de evaluation e nao devem ser editados:
+Arquivos e áreas que nao podem ser alterados durante o desafio:
 
 - `evals/golden_dataset.jsonl`
 - `evals/judge.py`
 - `evals/run_eval.py`
+- `evals/observability.py`
+- `evals/langfuse_evaluators/*.py`
+- `scripts/setup_langfuse.py`
+- `pyproject.toml`
+
+Tambem nao vale remover casos, afrouxar o avaliador, editar o score esperado ou alterar a
+instrumentacao apenas para esconder falhas. O objetivo e melhorar o sistema avaliado, nao a
+regua de avaliacao.
 
 ## O que e esperado
 
@@ -126,7 +145,7 @@ Use este caminho para simular a experiência dos participantes:
 4. Teste uma pergunta manual com a CLI.
 5. Rode a Evaluation local para registrar o score inicial.
 6. Configure dataset, evaluators e rules no Langfuse.
-7. Rode a Evaluation enviando traces e scores para o Langfuse.
+7. Rode a Evaluation criando uma Dataset Run no Langfuse.
 8. Analise os casos ruins, corrija agentes, ferramentas, regras ou políticas.
 9. Rode a Evaluation novamente.
 10. Compare score inicial e final, com evidências dos problemas encontrados.
@@ -140,12 +159,12 @@ uv run python -m src.acme_support_ai.cli "Qual é o prazo para pedir reembolso d
 uv run python -m evals.run_eval --verbose --trace-provider local
 uv run python scripts/setup_langfuse.py --dry-run
 uv run python scripts/setup_langfuse.py
-uv run python -m evals.run_eval --verbose --trace-provider langfuse
+uv run python -m evals.run_eval --verbose --trace-provider langfuse --run-name tentativa-01
 ```
 
 Para workshop, use `--trace-provider local` quando cada grupo nao tiver credenciais Langfuse.
 Use `--trace-provider langfuse` na maquina do facilitador, ou em um projeto Langfuse por grupo,
-para mostrar traces, scores e comparacao entre runs.
+para criar Dataset Runs comparáveis na UI do Langfuse.
 
 ## Setup com uv
 
@@ -280,11 +299,15 @@ docs/evaluation-findings-guide.md
 
 ## Observabilidade
 
-O padrao de observabilidade do projeto e Langfuse. Ele entra depois que cada caso do golden dataset e executado:
+O padrao de observabilidade e comparacao do projeto e Langfuse. No modo principal, o runner
+busca o dataset no Langfuse e cria uma Dataset Run/Experiment comparavel na UI:
 
 ```text
-golden_dataset -> Agno+Groq agents -> judge -> scores -> Langfuse trace
+Langfuse dataset -> Agno+Groq agents -> SDK evaluators -> Langfuse Dataset Run
 ```
+
+O Langfuse organiza a rodada, registra traces/scores e permite comparar tentativas. A execucao
+dos agentes continua acontecendo no projeto local via `evals/run_eval.py`.
 
 Para configurar, siga o guia:
 
@@ -302,7 +325,7 @@ Isso cria arquivos em `runs/`.
 
 Use esse modo quando todos os participantes tiverem Groq, mas nao tiverem conta Langfuse.
 
-Para usar Langfuse no fluxo principal, primeiro configure as credenciais e suba o dataset/evaluators:
+Para usar Langfuse no fluxo principal, primeiro configure as credenciais e suba o dataset:
 
 ```bash
 uv sync
@@ -317,11 +340,20 @@ O script cria no Langfuse:
 - code evaluator `acme-json-contract`;
 - code evaluator `acme-golden-dataset-rules`;
 - code evaluator `acme-business-risk-flags`.
-- evaluation rule ativa para JSON contract em observations;
-- evaluation rule ativa para business risk flags em observations;
-- evaluation rule ativa para golden dataset rules em experiments/dataset runs.
+- evaluation rules desativadas por padrao para uso opcional na UI.
 
-Se o Langfuse rejeitar o preflight de ativação via API, o script cria as rules desativadas e imprime um aviso. Nesse caso, teste e habilite as rules pela UI do Langfuse.
+O fluxo principal nao depende das evaluation rules estarem ativas. Quem executa os scores da
+rodada e o `evals/run_eval.py`, usando evaluators via SDK dentro da Dataset Run. As rules
+server-side ficam apenas como material extra para demonstrar Code Evaluators do Langfuse.
+
+Se quiser testar a ativacao dessas rules server-side, rode explicitamente:
+
+```bash
+uv run python scripts/setup_langfuse.py --enable-rules
+```
+
+Se o Langfuse rejeitar o preflight de ativacao via API, mantenha as rules desativadas e use
+normalmente o comando `evals.run_eval --trace-provider langfuse`.
 
 Para validar o setup sem criar nada:
 
@@ -329,13 +361,13 @@ Para validar o setup sem criar nada:
 uv run python scripts/setup_langfuse.py --dry-run
 ```
 
-Depois rode a Evaluation enviando traces e scores para o Langfuse:
+Depois rode a Evaluation criando uma Dataset Run no Langfuse:
 
 ```bash
-uv run python -m evals.run_eval --verbose --trace-provider langfuse
+uv run python -m evals.run_eval --verbose --trace-provider langfuse --run-name tentativa-01
 ```
 
-Recomendacao para workshop: use `--trace-provider local` se a turma nao tiver credenciais, e use `--trace-provider langfuse` na maquina do facilitador para mostrar traces, scores e comparacao entre runs.
+Recomendacao para workshop: use `--trace-provider local` se a turma nao tiver credenciais, e use `--trace-provider langfuse` na maquina do facilitador para mostrar Dataset Runs, traces, scores e comparacao entre tentativas.
 
 ## Score
 

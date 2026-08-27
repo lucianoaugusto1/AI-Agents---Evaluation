@@ -1,7 +1,9 @@
 import json
 import unittest
+from unittest.mock import patch
 
 from evals.judge import judge_case
+from evals.run_eval import _answer_or_runtime_error
 from evals.run_eval import load_cases
 from scripts.setup_langfuse import EVALUATION_RULES, EVALUATOR_FILES, case_to_dataset_item
 from src.acme_support_ai.tools import (
@@ -31,6 +33,35 @@ class EvalRunnerTest(unittest.TestCase):
 
         self.assertTrue(0 <= result.total <= 1)
         self.assertGreater(result.format, 0)
+
+    def test_judge_accepts_langfuse_object_shaped_expected_fields(self) -> None:
+        case = {
+            "id": "OBJ-001",
+            "category": "test",
+            "expected_keywords": [{"value": "10 dias úteis"}, {"text": "retorno"}],
+            "required_citations": [{"doc_id": "finance_current"}],
+            "forbidden_claims": [{"claim": "15 dias corridos"}],
+            "expect_json": True,
+            "expect_escalate": False,
+        }
+        payload = {
+            "answer": "O prazo é de 10 dias úteis após o retorno.",
+            "citations": ["finance_current"],
+            "confidence": "high",
+            "escalate": False,
+        }
+
+        result = judge_case(case, json.dumps(payload))
+
+        self.assertEqual(result.relevance, 1.0)
+        self.assertEqual(result.faithfulness, 1.0)
+
+    def test_runtime_errors_are_returned_as_failed_case_output(self) -> None:
+        with patch("evals.run_eval.answer_question", side_effect=RuntimeError("tool schema failed")):
+            response = _answer_or_runtime_error("Preciso de recibo?")
+
+        self.assertIn("__ACME_RUNTIME_ERROR__", response)
+        self.assertIn("tool schema failed", response)
 
     def test_intentional_stale_tool_rules_are_visible(self) -> None:
         receipt = json.loads(validate_expense_receipt(95, has_receipt=False))

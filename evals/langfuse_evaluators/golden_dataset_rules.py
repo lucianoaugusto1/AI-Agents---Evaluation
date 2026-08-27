@@ -22,6 +22,24 @@ def _normalize(value):
     return re.sub(r"\s+", " ", str(value).casefold()).strip()
 
 
+def _as_text_list(value):
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        for key in ("value", "text", "name", "id", "doc_id", "claim", "keyword"):
+            if key in value:
+                return _as_text_list(value[key])
+        return [json.dumps(value, ensure_ascii=False, sort_keys=True)]
+    if isinstance(value, (list, tuple, set)):
+        items = []
+        for item in value:
+            items.extend(_as_text_list(item))
+        return items
+    return [str(value)]
+
+
 def _expected(ctx):
     if ctx.experiment is None or ctx.experiment.item_expected_output is None:
         return {}
@@ -45,9 +63,9 @@ def evaluate(ctx):
     normalized_answer = _normalize(answer)
     normalized_full = _normalize(raw)
 
-    expected_keywords = expected.get("expected_keywords", [])
-    required_citations = expected.get("required_citations", [])
-    forbidden_claims = expected.get("forbidden_claims", [])
+    expected_keywords = _as_text_list(expected.get("expected_keywords", []))
+    required_citations = _as_text_list(expected.get("required_citations", []))
+    forbidden_claims = _as_text_list(expected.get("forbidden_claims", []))
     expect_escalate = expected.get("expect_escalate")
 
     relevance_hits = [
