@@ -2,9 +2,9 @@
 
 Projeto didatico para workshop de Evaluation em sistemas com LLM.
 
-A ACME Corp, empresa ficticia usada no exercicio, tem um assistente interno com agentes especializados em RH, Financeiro, TI e atendimento geral. O sistema parece funcionar em demos simples, mas apresenta problemas comuns em projetos reais com LLM: usa politica antiga, inventa respostas sem contexto, ignora formato esperado, vaza instrucao indevida e falha em casos ambiguos.
+A ACME Corp, empresa ficticia usada no exercicio, tem um assistente interno com agentes especializados em RH, Financeiro, TI e atendimento geral. O sistema parece funcionar em demos simples, mas a empresa percebeu comportamentos estranhos em alguns atendimentos.
 
-O desafio dos participantes e usar Evaluation para diagnosticar esses problemas, corrigir o sistema e demonstrar melhoria com metricas.
+O desafio dos participantes e atuar como uma consultoria: ouvir as queixas da ACME, transformar o comportamento ideal em Golden Dataset, rodar Evaluation, investigar os sintomas, corrigir o sistema e demonstrar melhoria.
 
 ## As duas atividades do workshop
 
@@ -41,7 +41,7 @@ Por tras da API existe um sistema real de agentes com Agno + Groq:
 FastAPI -> orchestrator -> Agno Team -> Groq model -> tools -> JSON response
 ```
 
-Os agentes especializados usam tools locais para consultar politicas, versoes de documentos, matriz de aprovacao, perfis ficticios e tickets simulados. Os problemas do desafio aparecem em instrucoes, roteamento, uso de contexto, documentos obsoletos e decisoes de seguranca.
+Os agentes especializados usam tools locais para consultar politicas, versoes de documentos, matriz de aprovacao, perfis ficticios e tickets simulados. Alguns componentes foram deixados com problemas de proposito, mas os participantes recebem primeiro os sintomas percebidos pela empresa, nao a lista de bugs.
 
 Esse desenho simula um produto real o suficiente para discutir:
 
@@ -59,11 +59,28 @@ A apresentacao HTML esta no proprio repositorio:
 presentation/index.html
 ```
 
-Abra esse arquivo no navegador para conduzir a parte teorica e introduzir o desafio pratico.
+Abra esse arquivo no navegador para conduzir a apresentacao. Ela cobre os conceitos principais
+de Evaluation, mostra o case BIX + Grupo SOMA e termina com um unico slide explicando o
+desafio pratico.
 
 ## Objetivo do desafio
 
-Melhorar o score do sistema sem editar o dataset ou o avaliador.
+Usar Evaluation para descobrir onde os agentes erram, corrigir o sistema e mostrar que a
+qualidade melhorou. A regra principal: nao editar o Golden Dataset nem os avaliadores.
+
+## Queixas da ACME
+
+A empresa reportou alguns sintomas antes de pedir ajuda:
+
+- colaboradores receberam prazos diferentes para reembolso;
+- algumas respostas parecem usar politica antiga;
+- em perguntas sensiveis de RH, o assistente da detalhes demais;
+- algumas respostas quebram o formato esperado pela API;
+- quando nao encontra uma politica clara, o assistente responde com confiança demais;
+- o time de TI suspeita que pedidos maliciosos podem influenciar a resposta.
+
+Essas queixas foram traduzidas em comportamento esperado no Golden Dataset. A Evaluation mede
+se o sistema esta respeitando esse comportamento.
 
 Arquivos que podem ser alterados durante o desafio:
 
@@ -87,11 +104,48 @@ Ao final, cada grupo deve conseguir explicar:
 
 - qual era o score inicial;
 - quais falhas foram encontradas;
+- qual impacto essas falhas teriam para um cliente;
 - quais mudancas foram feitas;
 - qual foi o score final;
 - qual risco ainda ficou aberto.
 
-Nao basta subir o score por tentativa e erro. A entrega precisa conectar falha, evidencia e correcao.
+Nao basta subir o score por tentativa e erro. A entrega precisa explicar o problema, mostrar a
+evidencia encontrada no Evaluation/Langfuse e justificar a correcao.
+
+## Fluxo completo para validar o desafio
+
+Use este caminho para simular a experiência dos participantes:
+
+1. Gere ou separe as chaves:
+   - `GROQ_API_KEY`;
+   - `LANGFUSE_PUBLIC_KEY`;
+   - `LANGFUSE_SECRET_KEY`;
+   - `LANGFUSE_BASE_URL`.
+2. Instale o projeto com `uv sync`.
+3. Copie `.env.example` para `.env` e preencha as chaves.
+4. Teste uma pergunta manual com a CLI.
+5. Rode a Evaluation local para registrar o score inicial.
+6. Configure dataset, evaluators e rules no Langfuse.
+7. Rode a Evaluation enviando traces e scores para o Langfuse.
+8. Analise os casos ruins, corrija agentes, ferramentas, regras ou políticas.
+9. Rode a Evaluation novamente.
+10. Compare score inicial e final, com evidências dos problemas encontrados.
+
+Comandos principais:
+
+```bash
+uv sync
+cp .env.example .env
+uv run python -m src.acme_support_ai.cli "Qual é o prazo para pedir reembolso de viagem?"
+uv run python -m evals.run_eval --verbose --trace-provider local
+uv run python scripts/setup_langfuse.py --dry-run
+uv run python scripts/setup_langfuse.py
+uv run python -m evals.run_eval --verbose --trace-provider langfuse
+```
+
+Para workshop, use `--trace-provider local` quando cada grupo nao tiver credenciais Langfuse.
+Use `--trace-provider langfuse` na maquina do facilitador, ou em um projeto Langfuse por grupo,
+para mostrar traces, scores e comparacao entre runs.
 
 ## Setup com uv
 
@@ -340,7 +394,8 @@ Risco restante:
 
 ## Dica
 
-Nao comece alterando tudo. Rode a evaluation, olhe os piores casos e corrija uma classe de erro por vez.
+Nao comece alterando tudo. Rode a evaluation, olhe os piores casos, escolha uma classe de erro
+e corrija uma coisa por vez.
 
 ## Fontes das integracoes
 

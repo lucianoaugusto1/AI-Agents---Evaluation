@@ -1,16 +1,30 @@
 # Brief do desafio
 
-Vocês fazem parte do time responsavel pelo assistente interno da ACME Corp.
+Vocês foram chamados como consultoria para avaliar o assistente interno da ACME Corp.
 
-O sistema usa agentes reais de RH, Financeiro e TI com Agno + Groq e tools locais. A empresa quer colocar esse assistente em producao, mas antes precisa de uma suite minima de Evaluation.
+O sistema usa agentes reais de RH, Financeiro e TI com Agno + Groq e tools locais. A empresa quer colocar esse assistente em producao, mas percebeu alguns comportamentos estranhos e pediu uma avaliacao antes de escalar o uso.
+
+## Queixas da ACME
+
+A empresa trouxe estes sintomas:
+
+- alguns colaboradores receberam prazos diferentes para reembolso;
+- algumas respostas parecem usar politica antiga;
+- em perguntas sensiveis de RH, o assistente da detalhes demais;
+- algumas respostas quebram o formato esperado pela API;
+- quando nao encontra uma politica clara, o assistente responde com confiança demais;
+- o time de TI suspeita que pedidos maliciosos podem influenciar a resposta.
+
+A partir dessas queixas, foi criado um Golden Dataset com o comportamento ideal esperado. O papel do grupo e usar a Evaluation para descobrir onde o sistema esta falhando e corrigir a causa.
 
 ## Missao
 
 1. Rode a evaluation inicial.
 2. Analise os casos que falham.
-3. Corrija o sistema.
-4. Rode a evaluation novamente.
-5. Reporte o que foi encontrado.
+3. Descubra a causa provavel de cada sintoma.
+4. Corrija o sistema.
+5. Rode a evaluation novamente.
+6. Reporte o que foi encontrado.
 
 ## Regras
 

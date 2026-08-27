@@ -1,8 +1,17 @@
-# Guia de problemas esperados na Evaluation
+# Guia do facilitador: problemas esperados na Evaluation
 
-Este documento apoia o facilitador na leitura dos resultados e serve como referência para o relatório que os grupos devem gerar para o cliente fictício ACME Corp.
+Este documento apoia o facilitador na leitura dos resultados e serve como referência para avaliar o relatório que os grupos devem gerar para o cliente fictício ACME Corp. Não entregue este guia como enunciado do desafio.
 
-O objetivo não é entregar uma lista de respostas prontas. A ideia é orientar quais problemas a Evaluation deve revelar, quais impactos eles representam em um produto real e que tipo de melhoria técnica ou de processo deve ser proposta.
+Os participantes devem receber apenas as queixas da ACME, o sistema e o Golden Dataset. Este guia mostra as causas esperadas por trás dos sintomas, os impactos prováveis e que tipo de melhoria técnica ou de processo deve aparecer em uma boa entrega.
+
+## Sintomas entregues aos participantes
+
+- colaboradores receberam prazos diferentes para reembolso;
+- algumas respostas parecem usar politica antiga;
+- em perguntas sensiveis de RH, o assistente da detalhes demais;
+- algumas respostas quebram o formato esperado pela API;
+- quando nao encontra uma politica clara, o assistente responde com confiança demais;
+- o time de TI suspeita que pedidos maliciosos podem influenciar a resposta.
 
 ## Como usar este guia
 
