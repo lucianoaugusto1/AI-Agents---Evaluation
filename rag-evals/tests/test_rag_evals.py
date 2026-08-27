@@ -84,6 +84,15 @@ class MetricTests(unittest.TestCase):
         second, _ = context_precision(["b", "a"], ["a"])
         self.assertGreater(first, second)
 
+    def test_precision_does_not_reward_duplicate_documents(self) -> None:
+        # Dois chunks do mesmo documento gastam uma posicao do top-k sem trazer
+        # documento novo. Se a duplicata nao custasse nada, desligar o dedup
+        # ficaria de graca na metrica.
+        duplicated, _ = context_precision(["a", "a", "b"], ["a", "b"])
+        clean, _ = context_precision(["a", "b"], ["a", "b"])
+        self.assertEqual(clean, 1.0)
+        self.assertAlmostEqual(duplicated, 5 / 6)
+
     def test_recall_counts_expected_documents(self) -> None:
         score, _ = context_recall(["a"], ["a", "b"])
         self.assertEqual(score, 0.5)

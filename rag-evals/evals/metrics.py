@@ -17,6 +17,10 @@ def context_precision(retrieved_doc_ids: list[str], expected_doc_ids: list[str])
     vale 1.0, o mesmo documento em terceiro vale 0.33. Trazer mais chunks nao
     derruba a nota por si so, mas empurrar o documento certo para baixo do
     ruido derruba.
+
+    Cada documento esperado conta uma vez so. Dois chunks do mesmo documento
+    ocupando o top-k gastam uma posicao sem trazer documento novo, e a nota
+    cai como cairia com qualquer outro ruido naquela posicao.
     """
     if not expected_doc_ids:
         # Casos fora de escopo nao tem documento relevante para ranquear.
@@ -32,7 +36,10 @@ def context_precision(retrieved_doc_ids: list[str], expected_doc_ids: list[str])
     for position, doc_id in enumerate(retrieved_doc_ids, start=1):
         relevant = doc_id in expected
         first_time = relevant and doc_id not in seen
-        if relevant:
+        # Só o primeiro chunk de cada documento esperado conta como acerto: um
+        # segundo chunk do mesmo documento não traz informação nova e não pode
+        # inflar P@i (senão duplicata sairia de graça e o dedup não teria efeito).
+        if first_time:
             hits += 1
             seen.add(doc_id)
         precision_at_i = hits / position
