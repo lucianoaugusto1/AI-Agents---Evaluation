@@ -27,7 +27,7 @@ Configuracao (`acme_cloud_rag/config.py`):
 - `REMOVE_STOPWORDS_FROM_QUERY = False`: a pergunta vai crua para o BM25 e
   "qual", "para" e "posso" competem com os termos que importam. A lista
   `STOPWORDS` ja existe em `retriever.py` e nao e usada.
-- `MAX_CONTEXT_CHARS = 700`: o contexto e cortado por numero de caracteres
+- `MAX_CONTEXT_CHARS = 420`: o contexto e cortado por numero de caracteres
   depois de concatenado, entao o ultimo chunk chega truncado no meio da frase.
 - `STRICT_GROUNDING = False`: usa o prompt permissivo.
 
@@ -48,12 +48,41 @@ Codigo:
 | Caso | O que o participante ve | Bug |
 | --- | --- | --- |
 | `REEMB-001` | contexto com 30 dias e 7 dias ao mesmo tempo; resposta cita o prazo revogado | documento obsoleto no indice |
-| `REEMB-002` | recall 0.5, falta `planos_assinatura` | top-k 2 + dois chunks do mesmo documento |
+| `REEMB-002` | recall 0.0: as duas vagas do top-k vao para `politica_reembolso_2023`, entao faltam os dois documentos esperados | top-k 2 + dois chunks do mesmo documento |
 | `REEMB-003` | recall 0.0, vem `seguranca_conta` | query crua, sem stopwords |
 | `PLANO-002` | os dois documentos certos sao recuperados e metade da resposta some | corte do contexto por caractere |
 | `SLA-001` | a tabela de SLA chega partida | chunking de tamanho fixo |
 | `FORA-001` | o modelo afirma ter certificacao que nao existe no corpus | sem limiar + prompt permissivo |
-| `API-001`, `RET-001` | as duas vagas do top-k com o mesmo documento | sem dedup |
+| `REEMB-001`, `REEMB-002` | as duas vagas do top-k com o mesmo documento | sem dedup |
+
+## SEG-003: o teto que nenhum parametro alcanca
+
+`SEG-003` fica em `recall 0.5` no baseline e continua em `recall 0.5` com as
+sete correcoes aplicadas. Isso e proposital, mas nao esta no quadro de bugs
+acima porque nao e um bug de configuracao: e o limite do BM25.
+
+A pergunta diz "uma **sessao inativa expira**". O documento diz "**Sessoes
+inativas expiram** em 12 horas". Sem stemming, `sessao` nao casa com `sessoes`,
+`inativa` nao casa com `inativas` e `expira` nao casa com `expiram`. Os termos
+que discriminam o documento certo nao produzem nenhum match, e
+`seguranca_conta` cai para a ultima posicao do ranking, abaixo de todo o resto
+do corpus. Para resgata-lo seria preciso `TOP_K = 8`, que derruba a precisao
+em todos os outros casos.
+
+Nao mande o grupo consertar. O valor didatico do caso e outro:
+
+- ele mostra que existe falha de recuperacao que **nenhum ajuste de parametro
+  resolve**, e que a resposta certa as vezes e trocar a tecnica de busca, nao
+  girar o botao mais forte;
+- ele e o gancho natural para embeddings e busca hibrida, que e exatamente o
+  que um RAG de producao usaria e que este exercicio abre mao de proposito em
+  favor da reprodutibilidade;
+- ele treina a leitura honesta de eval: um caso que nao sobe nao e
+  necessariamente um caso mal resolvido.
+
+Se algum grupo diagnosticar sozinho que a causa e morfologia da query, isso
+vale mais que qualquer ponto de score. A pergunta para devolver: "quanto voce
+pagaria, em latencia e infra, para esse caso passar?"
 
 ## Correcoes esperadas
 
@@ -67,7 +96,11 @@ Nao existe uma resposta unica. As mudancas que costumam levar a meta:
 4. `CHUNK_SIZE = 700` com `CHUNK_OVERLAP = 150`, ou chunking por secao —
    mantem a tabela e o paragrafo inteiros.
 5. `MAX_CONTEXT_CHARS` maior, ou corte por chunk em vez de por caractere.
-6. `MIN_RELEVANCE_SCORE` acima de zero — habilita a recusa de `FORA-001`.
+6. `MIN_RELEVANCE_SCORE` acima de zero — descarta chunk irrelevante do
+   contexto. Sozinho ele nao faz `FORA-001` recusar: mesmo com limiar em 0.5
+   a pergunta de ISO 27001 ainda recupera `planos_assinatura` com score
+   suficiente. Quem faz a recusa acontecer e o `STRICT_GROUNDING`; o limiar
+   ajuda tirando ruido do prompt.
 7. `REMOVE_STOPWORDS_FROM_QUERY = True`.
 
 Todas as sete sao mudanca de parametro em `acme_cloud_rag/config.py`: da para
@@ -98,5 +131,7 @@ latencia e ancoragem.
 ## Perguntas para fechar a discussao
 
 - Qual metrica melhorou e qual piorou na mesma mudanca?
+- Por que `SEG-003` nao sobe com nenhum parametro, e o que isso diz sobre o
+  limite da busca lexica?
 - Quantas vezes o score subiu sem que o problema real tivesse sido resolvido?
 - O que dessa suite voce colocaria para rodar em cada pull request?
