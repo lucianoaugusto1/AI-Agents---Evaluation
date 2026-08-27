@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import atexit
 import json
 import os
+import sys
+import time
+from collections import deque
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,6 +31,203 @@ def load_env_file(path: Path | None = None) -> None:
             key, value = line.split("=", 1)
             os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
         return
+
+
+# Quantas vezes uma chamada recusada por rate limit e repetida antes de
+# desistir. A free tier da Groq limita tokens por minuto, e a suite completa
+# faz tres chamadas por caso do dataset: sem repeticao a run morre no meio.
+MAX_RATE_LIMIT_RETRIES = 6
+
+# Espera minima entre tentativas quando o provedor nao diz quanto esperar.
+# A Groq costuma pedir menos de um segundo, entao comecar em 2s desperdicava
+# tempo de parede: quase toda a espera da suite era backoff excessivo.
+RATE_LIMIT_BASE_DELAY = 0.5
+RATE_LIMIT_MAX_DELAY = 30.0
+
+# Teto de espera acumulada por execucao, em segundos. Sem ele uma unica chamada
+# pode dormir MAX_RATE_LIMIT_RETRIES * RATE_LIMIT_MAX_DELAY, e a suite inteira
+# rasteja em silencio por muitos minutos quando a cota esta saturada. Falhar
+# rapido com uma mensagem clara e melhor que um terminal parado sem explicacao.
+RATE_LIMIT_TOTAL_WAIT_BUDGET = float(os.getenv("RAG_RATE_LIMIT_BUDGET", "120"))
+
+# Alvo de tokens por minuto que a execucao tenta nao ultrapassar. A free tier
+# da Groq permite 8000, e a suite consome ~1000 por caso a ~7 casos por minuto:
+# ela roda exatamente no teto e satura sozinha depois do primeiro minuto.
+# Frear de proposito e mais barato que ser punido: 1s de pausa preventiva evita
+# 30s de castigo do provedor. Ponha 0 para desligar o freio.
+RATE_LIMIT_TPM_TARGET = float(os.getenv("RAG_TPM_TARGET", "7500"))
+
+# Janela de contabilidade do freio, em segundos.
+_TPM_WINDOW = 60.0
+
+# (instante, tokens) das chamadas recentes, por modelo. A cota da Groq e por
+# modelo, entao somar gerador e juiz no mesmo orcamento freia como se o consumo
+# de cada bucket fosse o dobro do real.
+_RECENT_CALLS: dict[str, deque] = {}
+
+# Estatisticas de rate limit da execucao. Ligue RAG_DEBUG_RATE_LIMIT=1 para ver
+# quanto da run foi espera, e nao trabalho.
+STATS = {
+    "calls": 0,
+    "retries": 0,
+    "wait_seconds": 0.0,
+    "throttle_seconds": 0.0,
+    "tokens": 0,
+    "tokens_by_model": {},
+    "warned": False,
+}
+
+
+def _estimate_tokens(system: str, user: str) -> int:
+    """Estimativa grosseira do custo da chamada, em tokens.
+
+    ~4 caracteres por token na entrada, mais uma folga para a saida. Serve so
+    para o freio decidir se espera; o consumo real substitui a estimativa
+    assim que a resposta chega.
+    """
+    return (len(system) + len(user)) // 4 + 512
+
+
+def _throttle(model: str, estimated: int) -> None:
+    """Espera antes de chamar, para o consumo do modelo caber no alvo.
+
+    Sem isso a suite dispara ate o provedor recusar, e cada recusa custa os 30s
+    do retry-after. O orcamento e por modelo: gerador e juiz separados tem cada
+    um a sua janela.
+    """
+    if RATE_LIMIT_TPM_TARGET <= 0:
+        return
+    recent = _RECENT_CALLS.setdefault(model, deque())
+    while True:
+        now = time.monotonic()
+        while recent and now - recent[0][0] > _TPM_WINDOW:
+            recent.popleft()
+        used = sum(tokens for _, tokens in recent)
+        if not recent or used + estimated <= RATE_LIMIT_TPM_TARGET:
+            return
+        # Dorme so ate a chamada mais antiga sair da janela e liberar espaco.
+        delay = min(_TPM_WINDOW - (now - recent[0][0]) + 0.05, 5.0)
+        if delay <= 0:
+            return
+        STATS["throttle_seconds"] += delay
+        time.sleep(delay)
+
+
+def _record_usage(model: str, response, fallback: int) -> None:
+    usage = getattr(response, "usage", None)
+    tokens = getattr(usage, "total_tokens", None) or fallback
+    STATS["tokens"] += tokens
+    by_model = STATS["tokens_by_model"]
+    by_model[model] = by_model.get(model, 0) + tokens
+    _RECENT_CALLS.setdefault(model, deque()).append((time.monotonic(), tokens))
+
+
+class RateLimitExhausted(RuntimeError):
+    """Rate limit que sobreviveu a todas as repeticoes.
+
+    Vira erro visivel de proposito. Devolver texto vazio aqui faria o juiz
+    pontuar zero e a suite reportar uma nota que nao mede o RAG, e sim a cota
+    do provedor.
+    """
+
+
+def _warn_rate_limit(model: str, delay: float, provider_message: str,
+                     _limit_kind_label: str = "minuto") -> None:
+    """Avisa que a pausa e cota do provedor, nao lentidao do RAG.
+
+    Sem isso o participante ve o terminal parado e nao tem como saber que o
+    problema esta do lado da Groq.
+    """
+    if not STATS["warned"]:
+        STATS["warned"] = True
+        print(
+            f"\n[rate limit] A Groq recusou uma chamada no modelo {model}: "
+            f"limite de tokens por {_limit_kind_label} excedido.\n"
+            "[rate limit] Isso e cota do provedor, nao lentidao do RAG. "
+            "A execucao continua, esperando e repetindo.\n"
+            f"[rate limit] Mensagem do provedor: {provider_message}\n",
+            file=sys.stderr,
+            flush=True,
+        )
+    print(
+        f"[rate limit] esperando {delay:.1f}s "
+        f"(acumulado {STATS['wait_seconds'] + delay:.0f}s de "
+        f"{RATE_LIMIT_TOTAL_WAIT_BUDGET:.0f}s)",
+        file=sys.stderr,
+        flush=True,
+    )
+
+
+def _rate_limit_help(model: str, error: Exception) -> str:
+    return (
+        f"RATE LIMIT DA GROQ - a execucao parou por cota, nao por erro do RAG.\n\n"
+        f"Esperei {STATS['wait_seconds']:.0f}s no total e as chamadas continuam "
+        f"sendo recusadas no modelo {model}.\n\n"
+        "O limite e por organizacao e por modelo (tokens por minuto), entao gerar "
+        "uma chave nova na mesma conta nao ajuda: a cota e a mesma.\n\n"
+        "O que fazer:\n"
+        "  - Espere alguns minutos sem rodar nada e tente de novo.\n"
+        "  - Itere com --case CASO em vez da suite completa.\n"
+        "  - Use um JUDGE_MODEL diferente do GROQ_MODEL: a cota e por modelo, "
+        "entao juiz e gerador separados dividem o consumo em dois buckets.\n"
+        "  - Para esperar mais antes de desistir: RAG_RATE_LIMIT_BUDGET=300\n\n"
+        f"Mensagem do provedor: {error}"
+    )
+
+
+def _limit_kind(error: Exception) -> str:
+    """Distingue o limite por dia do limite por minuto.
+
+    A Groq aplica os dois. Por minuto (TPM) a cota volta em segundos e vale a
+    pena esperar. Por dia (TPD) nao ha o que esperar dentro de uma sessao: o
+    retry-after pede minutos e a cota estoura de novo na chamada seguinte.
+    """
+    message = str(error)
+    if "tokens per day" in message or "(TPD)" in message:
+        return "dia"
+    if "tokens per minute" in message or "(TPM)" in message:
+        return "minuto"
+    return "desconhecido"
+
+
+def _daily_quota_message(model: str, error: Exception) -> str:
+    return (
+        "COTA DIARIA DA GROQ ESGOTADA - nao e erro do RAG nem lentidao.\n\n"
+        f"O modelo {model} atingiu o limite de tokens por dia da organizacao. "
+        "Esperar nao resolve: a cota so volta no reset diario, e uma pausa curta "
+        "seria consumida pela proxima chamada.\n\n"
+        "Orcamento da free tier: 200.000 tokens por dia, e a suite completa "
+        "consome ~25.000. Sao ~8 execucoes completas por dia, por conta.\n\n"
+        "O que fazer:\n"
+        "  - Itere com --case CASO: um caso custa ~1/18 da suite.\n"
+        "  - Guarde a suite completa para os checkpoints.\n"
+        "  - Use um JUDGE_MODEL diferente do GROQ_MODEL: a cota e por modelo, "
+        "entao juiz e gerador separados dobram o orcamento diario disponivel.\n"
+        "  - Ou use outra conta, ou suba de tier.\n\n"
+        f"Mensagem do provedor: {error}"
+    )
+
+
+def _is_rate_limit(error: Exception) -> bool:
+    if type(error).__name__ == "RateLimitError":
+        return True
+    return getattr(getattr(error, "response", None), "status_code", None) == 429
+
+
+def _retry_delay(error: Exception, attempt: int) -> float:
+    """Quanto esperar antes da proxima tentativa.
+
+    A Groq responde com o header `retry-after` e costuma pedir menos de um
+    segundo. Quando o header nao vem, cai no backoff exponencial.
+    """
+    headers = getattr(getattr(error, "response", None), "headers", None) or {}
+    raw = headers.get("retry-after") or headers.get("Retry-After")
+    if raw:
+        try:
+            return min(max(float(raw), 0.1) + 0.1, RATE_LIMIT_MAX_DELAY)
+        except (TypeError, ValueError):
+            pass
+    return min(RATE_LIMIT_BASE_DELAY * (2 ** attempt), RATE_LIMIT_MAX_DELAY)
 
 
 _CLIENT = None
@@ -58,9 +259,12 @@ def complete(
 ) -> str:
     """Uma chamada de chat completion.
 
-    Modelos com raciocinio longo as vezes estouram o orcamento de tokens antes
-    de fechar o JSON, e a Groq responde 400 com `json_validate_failed`. Quando
-    isso acontece a chamada e repetida com o raciocinio desligado.
+    Trata dois erros esperados do provedor:
+
+    - 429 de rate limit: a chamada e repetida respeitando o `retry-after`.
+    - 400 `json_validate_failed`: modelos com raciocinio longo as vezes estouram
+      o orcamento de tokens antes de fechar o JSON. A chamada e repetida com o
+      raciocinio desligado.
     """
     def _call(effort: str | None) -> str:
         kwargs: dict = {
@@ -75,16 +279,60 @@ def complete(
             kwargs["response_format"] = {"type": "json_object"}
         if effort is not None:
             kwargs["reasoning_effort"] = effort
+        estimated = _estimate_tokens(system, user)
+        _throttle(model, estimated)
+        STATS["calls"] += 1
         response = get_client().chat.completions.create(**kwargs)
+        _record_usage(model, response, estimated)
         return (response.choices[0].message.content or "").strip()
 
+    def _rejects_effort(error: Exception) -> bool:
+        """Alguns modelos nao aceitam `reasoning_effort="none"`.
+
+        Os `openai/gpt-oss-*` respondem 400 exigindo low/medium/high. Sem isso
+        eles nao servem como JUDGE_MODEL, que roda sempre com "none".
+        """
+        return "reasoning_effort" in str(error)
+
+    def _call_with_retry(effort: str | None) -> str:
+        for attempt in range(MAX_RATE_LIMIT_RETRIES + 1):
+            try:
+                return _call(effort)
+            except Exception as error:
+                if not _is_rate_limit(error):
+                    raise
+                if _limit_kind(error) == "dia":
+                    raise RateLimitExhausted(
+                        _daily_quota_message(model, error)
+                    ) from error
+                delay = _retry_delay(error, attempt)
+                exhausted = attempt == MAX_RATE_LIMIT_RETRIES
+                over_budget = (
+                    STATS["wait_seconds"] + delay > RATE_LIMIT_TOTAL_WAIT_BUDGET
+                )
+                if exhausted or over_budget:
+                    raise RateLimitExhausted(
+                        _rate_limit_help(model, error)
+                    ) from error
+                _warn_rate_limit(model, delay, str(error), _limit_kind(error))
+                STATS["retries"] += 1
+                STATS["wait_seconds"] += delay
+                time.sleep(delay)
+        raise RateLimitExhausted("rate limit sem tentativas restantes")
+
     try:
-        return _call(reasoning_effort)
-    except Exception:
+        return _call_with_retry(reasoning_effort)
+    except RateLimitExhausted:
+        raise
+    except Exception as error:
+        if _rejects_effort(error):
+            return _call_with_retry(None)
         if reasoning_effort == "none":
             raise
         try:
-            return _call("none")
+            return _call_with_retry("none")
+        except RateLimitExhausted:
+            raise
         except Exception:
             return ""
 
@@ -101,3 +349,24 @@ def complete_json(system: str, user: str, model: str) -> dict:
     except json.JSONDecodeError:
         return {}
     return parsed if isinstance(parsed, dict) else {}
+
+
+def _report_stats() -> None:
+    if not os.getenv("RAG_DEBUG_RATE_LIMIT"):
+        return
+    if not STATS["calls"]:
+        return
+    print(
+        f"[rate limit] {STATS['calls']} chamadas, ~{STATS['tokens']} tokens, "
+        f"{STATS['retries']} repeticoes.\n"
+        f"[rate limit] {STATS['throttle_seconds']:.1f}s de freio preventivo, "
+        f"{STATS['wait_seconds']:.1f}s de castigo do provedor.",
+        file=sys.stderr,
+    )
+    for model, tokens in sorted(
+        STATS["tokens_by_model"].items(), key=lambda item: -item[1]
+    ):
+        print(f"[rate limit]   {model}: ~{tokens} tokens", file=sys.stderr)
+
+
+atexit.register(_report_stats)
